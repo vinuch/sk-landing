@@ -50,7 +50,9 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
 
     ])
     const handleMenuItemClick = () => {
+  // @ts-expect-error: untyped external dependency
         if (window.fbq) {
+  // @ts-expect-error: untyped external dependency
           window.fbq("track", "Lead");
           console.log("Lead tracked");
         } else {

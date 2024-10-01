@@ -56,48 +56,50 @@ export default function Home({ preview }: HomeProps) {
     Autoplay({ delay: 2000, stopOnInteraction: true })
   )
 
-  const [menu, setMenu] = React.useState([
-    {
-        id: 1,
-        name: 'Egusi soup',
-        img: 'egusi.jpeg',
-        price: 2500,
-        link: 'https://wa.me/p/8453684341344190/2347032189083'
-    },
-    {
-        id: 5,
-        name: 'Rice & Ofe Akwu (Banga stew)',
-        img: 'rice&banga.jpeg',
-        price: 2500,
-        link: 'https://wa.me/p/8421416651269514/2347032189083'
-    },
-    {
-        id: 2,
-        name: 'Okra soup',
-        img: 'okra.jpeg',
-        price: 2500,
-        link: 'https://wa.me/p/8843015549063708/2347032189083'
-    },
-    {
-        id: 3,
-        name: 'Vegetable soup',
-        img: 'vegetable.jpeg',
-        price: 2500,
-        link: 'https://wa.me/p/8869638753068621/2347032189083'
-    },
-    {
-        id: 4,
-        name: 'Nsala soup',
-        img: 'nsala.jpeg',
-        price: 2500,
-        link: 'https://wa.me/c/2347032189083'
+//   const [menu, setMenu] = React.useState([
+//     {
+//         id: 1,
+//         name: 'Egusi soup',
+//         img: 'egusi.jpeg',
+//         price: 2500,
+//         link: 'https://wa.me/p/8453684341344190/2347032189083'
+//     },
+//     {
+//         id: 5,
+//         name: 'Rice & Ofe Akwu (Banga stew)',
+//         img: 'rice&banga.jpeg',
+//         price: 2500,
+//         link: 'https://wa.me/p/8421416651269514/2347032189083'
+//     },
+//     {
+//         id: 2,
+//         name: 'Okra soup',
+//         img: 'okra.jpeg',
+//         price: 2500,
+//         link: 'https://wa.me/p/8843015549063708/2347032189083'
+//     },
+//     {
+//         id: 3,
+//         name: 'Vegetable soup',
+//         img: 'vegetable.jpeg',
+//         price: 2500,
+//         link: 'https://wa.me/p/8869638753068621/2347032189083'
+//     },
+//     {
+//         id: 4,
+//         name: 'Nsala soup',
+//         img: 'nsala.jpeg',
+//         price: 2500,
+//         link: 'https://wa.me/c/2347032189083'
 
-    },
+//     },
 
-]);
+// ]);
 
 const handleMenuItemClick = () => {
+  // @ts-expect-error: untyped external dependency
     if (window.fbq) {
+  // @ts-expect-error: untyped external dependency
         window.fbq('track', 'PageView');
         console.log('PageView tracked');
     } else {

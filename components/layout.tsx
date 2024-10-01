@@ -1,6 +1,7 @@
 import Script from 'next/script';
 import Footer from "./footer";
 import Nav from "./nav";
+import Image from 'next/image';
 
 type LayoutProps = {
     preview: boolean;
@@ -28,7 +29,7 @@ export default function Layout({ children }: LayoutProps) {
             </Script>
 
             <noscript>
-                <img height="1" width="1" style={{ display: 'none' }}
+                <Image alt='fb' height="1" width="1" style={{ display: 'none' }}
                     src="https://www.facebook.com/tr?id=1092918909501158&ev=PageView&noscript=1" />
             </noscript>
             <Nav />
