@@ -12,7 +12,7 @@ export default function Footer() {
                     <p className="my-2 font-medium">Proud to serve</p>
                     <p className="my-2">contact@satellitekitchen.ng</p>
                     <p className="my-2 flex items-center gap-2"> <FaPhoneAlt /> <span>+234 08034746311</span></p>
-                    <Button className="bg-green px-8 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button>
+                    <a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"> <Button className="bg-green px-8 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a>
                 </div>
                 <div className="w-full md:w-3/12">
                     <ul>
