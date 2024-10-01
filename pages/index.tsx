@@ -56,6 +56,54 @@ export default function Home({ preview }: HomeProps) {
     Autoplay({ delay: 2000, stopOnInteraction: true })
   )
 
+  const [menu, setMenu] = React.useState([
+    {
+        id: 1,
+        name: 'Egusi soup',
+        img: 'egusi.jpeg',
+        price: 2500,
+        link: 'https://wa.me/p/8453684341344190/2347032189083'
+    },
+    {
+        id: 5,
+        name: 'Rice & Ofe Akwu (Banga stew)',
+        img: 'rice&banga.jpeg',
+        price: 2500,
+        link: 'https://wa.me/p/8421416651269514/2347032189083'
+    },
+    {
+        id: 2,
+        name: 'Okra soup',
+        img: 'okra.jpeg',
+        price: 2500,
+        link: 'https://wa.me/p/8843015549063708/2347032189083'
+    },
+    {
+        id: 3,
+        name: 'Vegetable soup',
+        img: 'vegetable.jpeg',
+        price: 2500,
+        link: 'https://wa.me/p/8869638753068621/2347032189083'
+    },
+    {
+        id: 4,
+        name: 'Nsala soup',
+        img: 'nsala.jpeg',
+        price: 2500,
+        link: 'https://wa.me/c/2347032189083'
+
+    },
+
+]);
+
+const handleMenuItemClick = () => {
+    if (window.fbq) {
+        window.fbq('track', 'PageView');
+        console.log('PageView tracked');
+    } else {
+        console.warn('fbq is not defined');
+    }
+}
   return (
     <Layout preview={preview}>
       <div className={`${leagueSpartan.className}`}>
@@ -63,8 +111,8 @@ export default function Home({ preview }: HomeProps) {
 
         <div className="bg-primary h-screen flex justify-between w-full -my-28 mb-1 pt-28 p-4">
           <div></div>
-          <div className="w-full md:w-8/12  h-full absolute left-0 px-2 text-center md:text-left " style={{ top: '18%' }}>
-            <h2 className={`${leagueSpartan.className} text-6xl md:text-8xl lg:text-9xl  text-milk font-bold leading-tight lg:leading-snug`}><span className="bg-black/50 inline p-3">The place for home-made delicacies</span>  <br />
+          <div className="w-full md:w-8/12  h- absolute left-0 px-2 text-center md:text-left " style={{ top: '18%' }}>
+            <h2 className={`${leagueSpartan.className} text-6xl md:text-8xl lg:text-8xl 2xl:text-9xl  text-milk font-bold leading-tight lg:leading-snug`}><span className="bg-black/50 inline p-3">The place for home-made delicacies</span>  <br />
               <span className="bg-black/50">Just like Mama <br /> makes them</span>   </h2>
           </div>
           <div className="w-full md:w-8/12 h-full flex gap-4">
@@ -76,11 +124,13 @@ export default function Home({ preview }: HomeProps) {
 
         {/* Menu */}
 
-        <div className="bg-white flex gap-6 p-8 py-12 md:p-20" style={{ height: "90vh" }}>
+        <div className="bg-white flex gap-6 p-8 py-20 md:p-20" >
           <div className="w-3/12 hidden md:block">
-            <div className={`w-full h-72 md:h-96 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/egusi.jpeg)` }}>
-              <div className="  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <p className="-translate-x-80 group-hover:translate-x-0 transition-all">Order on Whatsapp</p>
+            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/egusi.jpeg)`, minHeight: '300px' }}>
+              <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
+              <a href="https://wa.me/p/8453684341344190/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex  justify-between w-full"><span>egusi</span>
 
                   <span>Soup</span>
@@ -89,9 +139,11 @@ export default function Home({ preview }: HomeProps) {
             </div>
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/egusi.jpeg`} alt="egusi soup" width={350} height={300} /></div> */}
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/vegetable.jpeg`} alt="vegetable soup" width={350} height={300} /></div> */}
-            <div className={`w-full mt-4 h-72 md:h-96 rounded-lg overflow-hidden relative cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/vegetable.jpeg)` }}>
+            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/vegetable.jpeg)`, minHeight: '300px'  }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-
+              <a href="https://wa.me/p/8869638753068621/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex justify-between w-full"><span>vegetable</span>
 
                   <span>Soup</span>
@@ -100,15 +152,17 @@ export default function Home({ preview }: HomeProps) {
             </div>
           </div>
           <div className="w-full md:w-6/12 ">
-            <div className="h-2/5 text-center">
-              <h3 className="text-center text-4xl md:text-7xl text-black">ENYOY OUR MENU <br />SPECIALS!</h3>
+            <div className="md:h-2/5 text-center">
+              <h3 className="text-center text-4xl md:text-7xl text-black">ENJOY OUR MENU <br />SPECIALS!</h3>
               <Link href="/restaurant-menu">
                 <Button variant="outline" className="text-black my-4 border-primary text-xl p-5 hover:text-white hover:bg-primary" >Check Menu</Button>  </Link>
             </div>
-            <div className="flex w-full md:h-3/5 h-48 gap-6">
-            <div className={`w-6/12 h-72 md:h-96 rounded-lg overflow-hidden relative cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)` }}>
+            <div className="flex w-full flex-wrap md:flex-nowrap gap-6">
+            <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px'  }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-
+              <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex justify-between w-full"><span>Rice & Banga</span>
 
                   <span>Rice</span>
@@ -117,9 +171,11 @@ export default function Home({ preview }: HomeProps) {
             </div>
               {/* <div className="w-6/12 bg-cover hover:rotate-3 transition-all ease-in-out"><Image src={`/rice&banga.jpeg`} alt="rice & banga" width={500} height={500} /></div> */}
               {/* <div className="w-6/12 bg-cover hover:rotate-3 transition-all ease-in-out"><Image src={`/okra.jpeg`} alt="okra soup" width={500} height={500} /></div> */}
-              <div className={`w-6/12 h-72 md:h-96 rounded-lg overflow-hidden relative cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/okra.jpeg)` }}>
+              <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/okra.jpeg)`, minHeight: '300px'  }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-
+              <a href="https://wa.me/p/8843015549063708/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex justify-between w-full"><span>Okra</span>
 
                   <span>Soup</span>
@@ -131,9 +187,11 @@ export default function Home({ preview }: HomeProps) {
           <div className="w-3/12 hidden md:block">
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/nsala.jpeg`} alt="nsala" width={350} height={300} /></div>
             <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/rice&banga.jpeg`} alt="rice & banga" width={350} height={300} /></div> */}
-            <div className={`w-full h-72 md:h-96 rounded-lg overflow-hidden relative cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/nsala.jpeg)` }}>
+            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/nsala.jpeg)`, minHeight: '300px'  }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-
+              <a href="https://wa.me/c/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex justify-between w-full"><span>Nsala</span>
 
                   <span>Soup</span>
@@ -142,9 +200,11 @@ export default function Home({ preview }: HomeProps) {
             </div>
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/egusi.jpeg`} alt="egusi soup" width={350} height={300} /></div> */}
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/vegetable.jpeg`} alt="vegetable soup" width={350} height={300} /></div> */}
-            <div className={`w-full mt-4 h-72 md:h-96 rounded-lg overflow-hidden relative cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)` }}>
+            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px'  }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-
+              <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+              </a>
                 <div className="flex justify-between w-full"><span>Rice</span>
 
                   <span>rice</span>
@@ -155,8 +215,8 @@ export default function Home({ preview }: HomeProps) {
         </div>
         {/* FAQ */}
 
-        <div className="bg-white/95 text-black p-12 md:px-20 py-40 md:pr-0 flex flex-wrap md:flex-nowrap gap-12 ">
-          <div className="w-full md:w-5/12">
+        <div className="bg-white/95 text-black md:p-12 md:px-20 py-40 md:pr-0 flex flex-wrap md:flex-nowrap gap-12 ">
+          <div className="w-full md:w-5/12 px-12 md:p-0">
             <h3 className="text-4xl md:text-8xl">
               Be Our Guest at  <br /> The Satellite Kitchen
             </h3>
@@ -187,9 +247,9 @@ export default function Home({ preview }: HomeProps) {
             </div>
 
           </div>
-          <div className="w-full md:w-7/12 flex gap-4">
-            <div className="bg-primary h-full w-6/12 bg-cover" style={{ backgroundImage: `url('/entrance.png')` }}></div>
-            <div className="bg-primary h-full w-6/12 bg-cover" style={{ backgroundImage: `url('/entrance2.png')` }}></div></div>
+          <div className="w-full md:w-7/12 flex flex-wrap md:flex-nowrap gap-4 ">
+            <div className="bg-primary h-72 md:h-full w-full md:w-6/12 bg-cover bg-center" style={{ backgroundImage: `url('/entrance.png')` }}></div>
+            <div className="bg-primary h-72 md:h-full w-full md:w-6/12 bg-cover bg-center" style={{ backgroundImage: `url('/entrance2.png')` }}></div></div>
         </div>
 
 
@@ -239,7 +299,7 @@ export default function Home({ preview }: HomeProps) {
         <div className="bg-white/80 p-12 md:p-24 text-center text-black">
           <h3 className="text-black text-4xl text-center my-8">Send an Inquiry</h3>
 
-          <div className="flex flex-wrap justify-center md:mx-auto gap-8 w-full md:w-7/12 mb-6">
+          <div className="flex flex-wrap justify-between md:mx-auto gap-4 w-full md:w-7/12 mb-6">
             <input type="text" name="name" id="name__contact" className="p-4 rounded-md border border-primary w-full md:w-48p" placeholder="Name" />
             <input type="text" name="name" id="phone__contact" className="p-4 rounded-md border border-primary w-full md:w-48p" placeholder="Phone" />
             <textarea rows={8} name="message" id="message__contact" className="p-4 rounded-md border border-primary w-full" placeholder="Enter message here" />

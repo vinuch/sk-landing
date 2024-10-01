@@ -11,6 +11,7 @@ const config: Config = {
   	extend: {
 		width: {
 			"48p": "48%",
+			"300px": "300px",
 		},
   		colors: {
   			background: 'hsl(var(--background))',

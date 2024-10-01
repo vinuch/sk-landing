@@ -34,7 +34,7 @@ export default function Nav() {
     }, []);
     return (
         <div className={`${leagueSpartan.className} sticky text-black top-0 flex items-center justify-between p-4 z-50 transition-all   ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "bg-white shadow-lg" : "bg-transparent"}`}>
-            <h3 className="font-bold text-xl w-7/12 md:w-4/12  ">
+            <h3 className="font-bold text-xl w-10/12 md:w-4/12  ">
                 <Link href='/'><div className="flex items-center gap-4">
                     <Image src={'/logo.png'} alt="logo" width={50} height={50} />
                     <span>SATELLITE KITCHEN</span>
