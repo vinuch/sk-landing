@@ -19,9 +19,9 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
   const [selectedType, setSelectedType] = useState("all");
 
   const filteredItems = selectedType === "all"
-    // @ts-ignore
+    // @ts-expect-error i dont know how to fix yet
     ? menuItems.sort((a, b) => b.type.localeCompare(a.type))
-    // @ts-ignore
+    // @ts-expect-error  i dont know how to fix yet
     : menuItems.filter((item) => item.type === selectedType).sort((a, b) => b.type.localeCompare(a.type));
 
   useEffect(() => {
