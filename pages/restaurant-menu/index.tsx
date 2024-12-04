@@ -19,8 +19,10 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
   const [selectedType, setSelectedType] = useState("all");
 
   const filteredItems = selectedType === "all"
-    ? menuItems
-    : menuItems.filter((item) => item.type === selectedType);
+    // @ts-ignore
+    ? menuItems.sort((a, b) => b.type.localeCompare(a.type))
+    // @ts-ignore
+    : menuItems.filter((item) => item.type === selectedType).sort((a, b) => b.type.localeCompare(a.type));
 
   useEffect(() => {
     const fetchMenuItems = async () => {
