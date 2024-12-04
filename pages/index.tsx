@@ -56,56 +56,56 @@ export default function Home({ preview }: HomeProps) {
     Autoplay({ delay: 2000, stopOnInteraction: true })
   )
 
-//   const [menu, setMenu] = React.useState([
-//     {
-//         id: 1,
-//         name: 'Egusi soup',
-//         img: 'egusi.jpeg',
-//         price: 2500,
-//         link: 'https://wa.me/p/8453684341344190/2347032189083'
-//     },
-//     {
-//         id: 5,
-//         name: 'Rice & Ofe Akwu (Banga stew)',
-//         img: 'rice&banga.jpeg',
-//         price: 2500,
-//         link: 'https://wa.me/p/8421416651269514/2347032189083'
-//     },
-//     {
-//         id: 2,
-//         name: 'Okra soup',
-//         img: 'okra.jpeg',
-//         price: 2500,
-//         link: 'https://wa.me/p/8843015549063708/2347032189083'
-//     },
-//     {
-//         id: 3,
-//         name: 'Vegetable soup',
-//         img: 'vegetable.jpeg',
-//         price: 2500,
-//         link: 'https://wa.me/p/8869638753068621/2347032189083'
-//     },
-//     {
-//         id: 4,
-//         name: 'Nsala soup',
-//         img: 'nsala.jpeg',
-//         price: 2500,
-//         link: 'https://wa.me/c/2347032189083'
+  //   const [menu, setMenu] = React.useState([
+  //     {
+  //         id: 1,
+  //         name: 'Egusi soup',
+  //         img: 'egusi.jpeg',
+  //         price: 2500,
+  //         link: 'https://wa.me/p/8453684341344190/2347032189083'
+  //     },
+  //     {
+  //         id: 5,
+  //         name: 'Rice & Ofe Akwu (Banga stew)',
+  //         img: 'rice&banga.jpeg',
+  //         price: 2500,
+  //         link: 'https://wa.me/p/8421416651269514/2347032189083'
+  //     },
+  //     {
+  //         id: 2,
+  //         name: 'Okra soup',
+  //         img: 'okra.jpeg',
+  //         price: 2500,
+  //         link: 'https://wa.me/p/8843015549063708/2347032189083'
+  //     },
+  //     {
+  //         id: 3,
+  //         name: 'Vegetable soup',
+  //         img: 'vegetable.jpeg',
+  //         price: 2500,
+  //         link: 'https://wa.me/p/8869638753068621/2347032189083'
+  //     },
+  //     {
+  //         id: 4,
+  //         name: 'Nsala soup',
+  //         img: 'nsala.jpeg',
+  //         price: 2500,
+  //         link: 'https://wa.me/c/2347032189083'
 
-//     },
+  //     },
 
-// ]);
+  // ]);
 
-const handleMenuItemClick = () => {
-  // @ts-expect-error: untyped external dependency
+  const handleMenuItemClick = () => {
+    // @ts-expect-error: untyped external dependency
     if (window.fbq) {
-  // @ts-expect-error: untyped external dependency
-        window.fbq('track', 'PageView');
-        console.log('PageView tracked');
+      // @ts-expect-error: untyped external dependency
+      window.fbq('track', 'PageView');
+      console.log('PageView tracked');
     } else {
-        console.warn('fbq is not defined');
+      console.warn('fbq is not defined');
     }
-}
+  }
   return (
     <Layout preview={preview}>
       <div className={`${leagueSpartan.className}`}>
@@ -128,11 +128,11 @@ const handleMenuItemClick = () => {
 
         <div className="bg-white flex gap-6 p-8 py-20 md:p-20" >
           <div className="w-3/12 hidden md:block">
-            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/egusi.jpeg)`, minHeight: '300px' }}>
+            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/egusi.png)`, minHeight: '300px' }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/p/8453684341344190/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
+                <a href="https://wa.me/p/8453684341344190/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                  <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                </a>
                 <div className="flex  justify-between w-full"><span>egusi</span>
 
                   <span>Soup</span>
@@ -141,11 +141,11 @@ const handleMenuItemClick = () => {
             </div>
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/egusi.jpeg`} alt="egusi soup" width={350} height={300} /></div> */}
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/vegetable.jpeg`} alt="vegetable soup" width={350} height={300} /></div> */}
-            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/vegetable.jpeg)`, minHeight: '300px'  }}>
+            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/vegetable.png)`, minHeight: '300px' }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/p/8869638753068621/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
+                <a href="https://wa.me/p/8869638753068621/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                  <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                </a>
                 <div className="flex justify-between w-full"><span>vegetable</span>
 
                   <span>Soup</span>
@@ -160,40 +160,40 @@ const handleMenuItemClick = () => {
                 <Button variant="outline" className="text-black my-4 border-primary text-xl p-5 hover:text-white hover:bg-primary" >Check Menu</Button>  </Link>
             </div>
             <div className="flex w-full flex-wrap md:flex-nowrap gap-6">
-            <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px'  }}>
-              <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
-                <div className="flex justify-between w-full"><span>Rice & Banga</span>
+              <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px' }}>
+                <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
+                  <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                    <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                  </a>
+                  <div className="flex justify-between w-full"><span>Rice & Banga</span>
 
-                  <span>Rice</span>
+                    <span>Rice</span>
+                  </div>
                 </div>
               </div>
-            </div>
               {/* <div className="w-6/12 bg-cover hover:rotate-3 transition-all ease-in-out"><Image src={`/rice&banga.jpeg`} alt="rice & banga" width={500} height={500} /></div> */}
               {/* <div className="w-6/12 bg-cover hover:rotate-3 transition-all ease-in-out"><Image src={`/okra.jpeg`} alt="okra soup" width={500} height={500} /></div> */}
-              <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/okra.jpeg)`, minHeight: '300px'  }}>
-              <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/p/8843015549063708/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
-                <div className="flex justify-between w-full"><span>Okra</span>
+              <div className={`w-full md:w-6/12 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/okra.png)`, minHeight: '300px' }}>
+                <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
+                  <a href="https://wa.me/p/8843015549063708/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                    <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                  </a>
+                  <div className="flex justify-between w-full"><span>Okra</span>
 
-                  <span>Soup</span>
+                    <span>Soup</span>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
           <div className="w-3/12 hidden md:block">
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/nsala.jpeg`} alt="nsala" width={350} height={300} /></div>
             <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/rice&banga.jpeg`} alt="rice & banga" width={350} height={300} /></div> */}
-            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/nsala.jpeg)`, minHeight: '300px'  }}>
+            <div className={`w-full rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/nsala.jpeg)`, minHeight: '300px' }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/c/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
+                <a href="https://wa.me/c/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                  <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                </a>
                 <div className="flex justify-between w-full"><span>Nsala</span>
 
                   <span>Soup</span>
@@ -202,11 +202,11 @@ const handleMenuItemClick = () => {
             </div>
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/egusi.jpeg`} alt="egusi soup" width={350} height={300} /></div> */}
             {/* <div className="w-full bg-cover flex justify-center items-center h-1/2 hover:rotate-3 transition-all ease-in-out"><Image src={`/vegetable.jpeg`} alt="vegetable soup" width={350} height={300} /></div> */}
-            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px'  }}>
+            <div className={`w-full mt-4 rounded-lg overflow-hidden relative group cursor-pointer hover:rotate-3 transition-all ease-in-out  bg-white/50 bg-cover bg-no-repeat `} style={{ backgroundImage: `url(/rice&banga.jpeg)`, minHeight: '300px' }}>
               <div className="flex  absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 text-lg h-full">
-              <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
-              <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
-              </a>
+                <a href="https://wa.me/p/8421416651269514/2347032189083" target="_blank" rel="noopener noreferrer" onClick={handleMenuItemClick}>
+                  <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">View & Order on Whatsapp</p>
+                </a>
                 <div className="flex justify-between w-full"><span>Rice</span>
 
                   <span>rice</span>
