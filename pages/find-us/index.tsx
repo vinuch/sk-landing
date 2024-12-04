@@ -2,8 +2,6 @@
 import Layout from "@/components/layout";
 import { LocateIcon } from "lucide-react";
 import { League_Spartan } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
 import { FaInstagram, FaWhatsapp } from "react-icons/fa";
 
 
