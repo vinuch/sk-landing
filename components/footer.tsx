@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function Footer() {
     return (
-        <div className="py-20 p-8 bg-background text-white">
+        <div className="py-20 p-8 bg-black text-white">
             <div className="flex flex-wrap justify-between gap-2 gap-y-12">
                 <div className="w-full md:w-4/12 leading leading-relaxed">
                     <h3 className="font-bold mb-4 text-xl capitalize">SATELLITE KITCHEN</h3>
