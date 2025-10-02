@@ -8,7 +8,12 @@ import { useEffect, useState } from "react";
 type RestaurantMenuProps = {
   preview: boolean;
 };
-type MenuItemsRow = Database["public"]["Tables"]["MenuItems"]["Row"];
+type MenuItemsRow = {
+  category_name: string;
+  id: number;
+  name: string;
+
+}
 const leagueSpartan = League_Spartan({
   weight: "700", // if single weight, otherwise you use array like [400, 500, 700],
   style: "normal", // if single style, otherwise you use array like ['normal', 'italic']
@@ -18,27 +23,47 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
   const [menuItems, setMenuItems] = useState<MenuItemsRow[]>([]);
   const [selectedType, setSelectedType] = useState("all");
 
+  // const filteredItems = selectedType === "all"
+  //   // @ts-expect-error i dont know how to fix yet
+  //   ? menuItems.sort((a, b) => b.category_name &&  b.category_name.localeCompare(a.category_name))
+  //   // @ts-expect-error  i dont know how to fix yet
+  //   : menuItems.filter((item) => item.category_name === selectedType);
+
   const filteredItems = selectedType === "all"
-    // @ts-expect-error i dont know how to fix yet
-    ? menuItems.sort((a, b) => b.type.localeCompare(a.type))
-    // @ts-expect-error  i dont know how to fix yet
-    : menuItems.filter((item) => item.type === selectedType).sort((a, b) => b.type.localeCompare(a.type));
+    ? menuItems.sort((a, b) => {
+      const nameA = a.category_name ?? ""; // fallback to empty string if null
+      const nameB = b.category_name ?? "";
+      return nameB.localeCompare(nameA); // sort descending
+    })
+    : menuItems.filter((item) => item.category_name === selectedType);
 
   useEffect(() => {
     const fetchMenuItems = async () => {
-      const { data, error } = await supabase
-        .from("MenuItems") // replace 'menu' with your table name
-        .select("*");
+      // const { data, error } = await supabase
+      //   .from("MenuItems") // replace 'menu' with your table name
+      //   .select("*");
 
-      if (error) {
-        // setError(error);
-      } else {
-        console.log(data);
-        setMenuItems(data);
+      // if (error) {
+      //   // setError(error);
+      // } else {
+      //   console.log(data);
+      //   setMenuItems(data);
+      // }
+
+      const res = await fetch("/api/pos-products");
+      if (!res.ok) {
+        console.error("Odoo request failed:", res.status, res.statusText);
+        return [];
       }
+      const dt = await res.json();
+
+      setMenuItems(dt)
+
     };
 
     fetchMenuItems();
+
+
   }, []);
 
   //   const [menu] = useState([
@@ -108,17 +133,17 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
                 <TabsTrigger className="bg-white" value="all" onClick={() => setSelectedType("all")}>
                   All
                 </TabsTrigger>
-                <TabsTrigger className="bg-white" value="soup" onClick={() => setSelectedType("soup")}>
+                <TabsTrigger className="bg-white" value="Soups" onClick={() => setSelectedType("Soups")}>
                   Soup
                 </TabsTrigger>
-                <TabsTrigger className="bg-white" value="swallow" onClick={() => setSelectedType("swallow")}>
+                <TabsTrigger className="bg-white" value="swallows" onClick={() => setSelectedType("swallows")}>
                   Swallow
                 </TabsTrigger>
-                <TabsTrigger className="bg-white" value="protein" onClick={() => setSelectedType("protein")}>
+                <TabsTrigger className="bg-white" value="Proteins" onClick={() => setSelectedType("Proteins")}>
                   Protein
                 </TabsTrigger>
               </TabsList>
-              {/* {JSON.stringify(filteredItems)} { selectedType} */}
+              {/* {JSON.stringify(filteredItems)} */}
               <TabsContent value={selectedType}>
                 <div className="flex gap-10 my-12 flex-wrap justify-center">
                   {filteredItems.map((item) => (
@@ -145,7 +170,7 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
                         </a>
                         <div className="flex justify-between w-full">
                           <span>{item.name}</span>
-                          <span>{item.type}</span>
+                          <span>{item.category_name}</span>
                         </div>
                       </div>
                     </div>
