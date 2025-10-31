@@ -7,7 +7,6 @@ import { leagueSpartan } from '../restaurant-menu';
 import { Selections } from '../restaurant-menu/[id]';
 import { useEffect, useState } from 'react';
 import { useMenuStore } from '@/store/menuStore';
-import { useHasHydrated } from '@/hooks/useHasHydrated';
 
 
 export default function CartPage() {
