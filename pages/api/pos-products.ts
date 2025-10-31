@@ -21,11 +21,19 @@ async function odooRPC(service: string, method: string, args: any[]) {
   });
   return response.json();
 }
+
+let menuCache: any = null;
+let lastFetch = 0;
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
+    const { id } = req.query;
+    console.log(id, 'no id', req.query)
+
     // 1️⃣ Authenticate API user
     const auth = await odooRPC("common", "authenticate", [
       DB,
@@ -39,7 +47,71 @@ export default async function handler(
       return res.status(401).json({ error: "Authentication failed" });
     }
 
-    // 2️⃣ Fetch POS products
+    // ✅ If ID is provided → fetch single product
+    if (id) {
+
+      const productResponse = await odooRPC("object", "execute_kw", [
+        DB,
+        uid,
+        PASSWORD,
+        "product.product",
+        "read",
+        [[Number(id)]],
+        {
+          fields: [
+            "id",
+            "name",
+            "list_price",
+            "default_code",
+            "product_tmpl_id",
+          ],
+        },
+      ]);
+
+      const product = productResponse.result?.[0];
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Fetch category info from template
+      const templateId = product.product_tmpl_id?.[0];
+      let category_id = null;
+      let category_name = null;
+
+      if (templateId) {
+        const templateResponse = await odooRPC("object", "execute_kw", [
+          DB,
+          uid,
+          PASSWORD,
+          "product.template",
+          "read",
+          [[templateId]],
+          { fields: ["id", "categ_id"] },
+        ]);
+
+        const template = templateResponse.result?.[0];
+        if (template?.categ_id) {
+          [category_id, category_name] = template.categ_id;
+        }
+      }
+
+      const productWithCategory = {
+        ...product,
+        category_id,
+        category_name,
+      };
+
+      return res.status(200).json(productWithCategory);
+    }
+
+    const now = Date.now();
+
+    // Serve cached menu if fresh
+    if (menuCache && now - lastFetch < CACHE_TTL) {
+      return res.status(200).json(menuCache);
+    }
+
+    // ✅ Otherwise → fetch all available POS products
     const products = await odooRPC("object", "execute_kw", [
       DB,
       uid,
@@ -53,12 +125,10 @@ export default async function handler(
       },
     ]);
 
-    // 2️⃣ Extract template IDs
     const templateIds = [
       ...new Set(products.result.map((p: any) => p.product_tmpl_id[0])),
     ];
 
-    // 3️⃣ Fetch templates with product category
     const templates = await odooRPC("object", "execute_kw", [
       DB,
       uid,
@@ -69,11 +139,10 @@ export default async function handler(
       { fields: ["id", "categ_id"] },
     ]);
 
-    // 4️⃣ Map category to products
     const categoryMap = Object.fromEntries(
       templates.result.map((t: any) => [
         t.id,
-        t.categ_id || [null, null], // store the whole [id, name] tuple
+        t.categ_id || [null, null],
       ])
     );
 
@@ -89,11 +158,12 @@ export default async function handler(
       };
     });
 
-    console.log(productsWithCategory, "hello");
+    menuCache = productsWithCategory;
+    lastFetch = Date.now();
 
     return res.status(200).json(productsWithCategory);
   } catch (err: any) {
-    console.error("Error fetching POS products:", err);
+    console.error("Error fetching products:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }

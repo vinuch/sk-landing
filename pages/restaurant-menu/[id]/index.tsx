@@ -1,0 +1,514 @@
+import Layout from "@/components/layout";
+import { leagueSpartan, MenuItemsRow } from "..";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
+import Link from "next/link";
+import { useCartStore } from "@/store/cartStore";
+import { Button } from "@/components/ui/button";
+import { FaCartPlus } from "react-icons/fa";
+import { useMenuStore } from "@/store/menuStore";
+
+export type SelectionItem = {
+    name: string
+    qty: number
+}
+
+export type Selections = {
+    swallow: SelectionItem[]
+    protein: SelectionItem[]
+    extraSwallow: SelectionItem[]
+    extraProtein: SelectionItem[]
+}
+
+
+
+
+
+// export default function MenuItem() {
+//     const [menuItem, setMenuItem] = useState<MenuItemsRow>();
+//     const [open, setOpen] = useState<string | null>(null);
+//     const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+//     const router = useRouter();
+//     const { id } = router.query;
+
+//     const addItem = useCartStore((state) => state.addItem);
+
+//     useEffect(() => {
+//         if (!id) return;
+//         const fetchMenuItem = async () => {
+
+//             const res = await fetch(`/api/pos-products?id=${id}`);
+//             if (!res.ok) {
+//                 console.error("Odoo request failed:", res.status, res.statusText);
+//                 return [];
+//             }
+//             const dt = await res.json();
+
+//             setMenuItem(dt)
+
+//         };
+
+//         fetchMenuItem();
+
+
+//     }, [id]);
+
+//     const toggleAccordion = (title: string) =>
+//         setOpen(open === title ? null : title);
+
+//     const adjustQty = (option: string, delta: number) => {
+//         setQuantities((prev) => ({
+//             ...prev,
+//             [option]: Math.max(0, (prev[option] || 0) + delta),
+//         }));
+//     };
+
+
+//     function formatSelections(quantities: Record<string, number>) {
+//         const selections: Selections = {
+//             swallow: [],
+//             protein: [],
+//             extraSwallow: [],
+//             extraProtein: []
+//         }
+
+//         for (const [name, qty] of Object.entries(quantities)) {
+//             // categorize items
+//             if (["Garri", "Fufu", "Semo"].includes(name)) {
+//                 selections.swallow.push({ name, qty })
+//             } else if (["Beef", "Goat Meat", "shaki", "round about"].includes(name)) {
+//                 selections.protein.push({ name, qty })
+//             } else {
+//                 // if you ever get an unknown item
+//                 selections.extraProtein.push({ name, qty })
+//             }
+//         }
+
+//         return selections
+//     }
+
+//     return (
+//         <Layout>
+//             <div className={`bg-primary ${leagueSpartan.className}`}>
+//                 <div className=" bg-white/60 p-12 md:p-24 h-screen overflow-y-scroll">
+
+//                     {/* <div>
+//                         Menu item page {id} {JSON.stringify(menuItem)}
+//                     </div> */}
+//                     <nav className="text-gray-600 text-sm mb-4" aria-label="breadcrumb">
+//                         <ol className="flex items-center space-x-2">
+//                             {/* Menu link */}
+//                             <li>
+//                                 <Link
+//                                     href="/restaurant-menu"
+//                                     className="hover:text-gray-800 font-medium"
+//                                 >
+//                                     Menu
+//                                 </Link>
+//                             </li>
+
+//                             {/* Separator */}
+//                             <li>
+//                                 <span className="text-gray-400">/</span>
+//                             </li>
+
+//                             {/* Current page */}
+//                             <li className="text-gray-800 font-semibold">
+//                                 {menuItem?.name}
+//                             </li>
+//                         </ol>
+//                     </nav>
+
+//                     <div className="flex flex-col md:flex-row gap-8 md:p-6  mx-auto">
+//                         {/* 🖼 Left: Product Image */}
+//                         <div className="md:w-1/2 flex justify-center">
+//                             <img
+//                                 src={`/${menuItem?.name
+//                                     ?.split(" ")[0]
+//                                     .toLowerCase()}.png`}
+//                                 alt={menuItem?.name}
+//                                 className="rounded-2xl shadow-md w-full max-w-md h-[500px] object-cover"
+//                             />
+//                         </div>
+
+//                         {/* 📦 Right: Product Options */}
+//                         <div className="md:w-1/2 flex flex-col gap-4">
+//                             <h1 className="text-2xl font-semibold mb-2 text-black">{menuItem?.name} {JSON.stringify(quantities)}</h1>
+//                             <p className="text-gray-600 mb-4">
+//                                 Customize your order by selecting your preferred proteins and swallows.
+//                             </p>
+
+//                             <div className="space-y-3">
+//                                 {categories.map((cat) => (
+//                                     <div
+//                                         key={cat.title}
+//                                         className="border rounded-xl overflow-hidden shadow-sm"
+//                                     >
+//                                         {/* Accordion Header */}
+//                                         <button
+//                                             onClick={() => toggleAccordion(cat.title)}
+//                                             className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100"
+//                                         >
+//                                             <span className="font-medium text-black">{cat.title}</span>
+//                                             {open === cat.title ? (
+//                                                 <ChevronUp className="w-5 h-5" />
+//                                             ) : (
+//                                                 <ChevronDown className="w-5 h-5" />
+//                                             )}
+//                                         </button>
+
+//                                         {/* Accordion Content */}
+//                                         {open === cat.title && (
+//                                             <div className="bg-white divide-y">
+//                                                 {cat.options.map((option) => (
+//                                                     <div
+//                                                         key={option}
+//                                                         className="flex justify-between items-center px-4 py-3"
+//                                                     >
+//                                                         <span className="text-gray-700">{option}</span>
+
+//                                                         <div className="flex items-center gap-3">
+//                                                             <button
+//                                                                 onClick={() => adjustQty(option, -1)}
+//                                                                 className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100"
+//                                                             >
+//                                                                 <Minus className="w-4 h-4" />
+//                                                             </button>
+//                                                             <span className="w-5 text-center text-gray-800">
+//                                                                 {quantities[option] || 0}
+//                                                             </span>
+//                                                             <button
+//                                                                 onClick={() => adjustQty(option, +1)}
+//                                                                 className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100"
+//                                                             >
+//                                                                 <Plus className="w-4 h-4" />
+//                                                             </button>
+//                                                         </div>
+//                                                     </div>
+//                                                 ))}
+//                                             </div>
+//                                         )}
+//                                     </div>
+//                                 ))}
+//                             </div>
+
+//                             <button className="mt-6 w-full bg-green-600 bg-white text-black py-3 rounded-xl font-medium hover:bg-green-700" onClick={() => {
+//                                 menuItem?.id && addItem({ ...menuItem, quantity: 1, selections: { ...quantities } })
+//                                 console.log(menuItem)
+//                             }}>
+//                                 Add to Cart
+//                             </button>
+//                         </div>
+//                     </div>
+//                 </div>
+//             </div>
+//         </Layout>
+//     )
+// }
+
+
+
+
+export default function MenuItem() {
+    const [menuItem, setMenuItem] = useState<MenuItemsRow>();
+    const [open, setOpen] = useState<string | null>(null);
+    // Store quantities with composite key: "categoryTitle:optionName"
+    const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+    const router = useRouter();
+    const { id } = router.query;
+
+    const addItem = useCartStore((state) => state.addItem);
+    const data = useMenuStore((state) => state.data)
+    const setData = useMenuStore((state) => state.setData)
+
+
+    const categoryMap: Record<string, any[]> = {}
+
+    data?.forEach((item) => {
+        const cat = item.category_name
+        if (!categoryMap[cat]) categoryMap[cat] = []
+        categoryMap[cat].push({ name: item.name.trim(), price: item.list_price })
+    })
+
+    const categories = [
+        {
+            title: "Main Protein",
+            max: 2,
+            options: categoryMap.Proteins || [],
+        },
+        {
+            title: "Main Swallow",
+            max: 1,
+            options: categoryMap.swallows || [],
+        },
+        {
+            title: "Extra Protein",
+            max: 10,
+            options: categoryMap.Proteins || [],
+        },
+        {
+            title: "Extra Swallow",
+            max: 10,
+            options: categoryMap.swallows || [],
+        },
+    ];
+
+    useEffect(() => {
+        if (!id) return;
+        const fetchMenuItem = async () => {
+            const res = await fetch(`/api/pos-products?id=${id}`);
+            if (!res.ok) {
+                console.error("Odoo request failed:", res.status, res.statusText);
+                return;
+            }
+            const dt = await res.json();
+            setMenuItem(dt);
+        };
+
+        fetchMenuItem();
+    }, [id]);
+
+
+    useEffect(() => {
+        const fetchMenuItems = async () => {
+            const res = await fetch("/api/pos-products");
+            if (!res.ok) {
+                console.error("Odoo request failed:", res.status, res.statusText);
+                return [];
+            }
+            const dt = await res.json();
+
+            setData(dt)
+
+
+        };
+
+        fetchMenuItems();
+
+
+    }, []);
+
+    const toggleAccordion = (title: string) =>
+        setOpen(open === title ? null : title);
+
+    // Create unique key for each category-option combination
+    const getKey = (categoryTitle: string, option: string) =>
+        `${categoryTitle}:${option}`;
+
+    // Calculate total for a category
+    const getCategoryTotal = (categoryTitle: string) => {
+        const category = categories.find(cat => cat.title === categoryTitle);
+        if (!category) return 0;
+
+        return category.options.reduce((sum, option) => {
+            const key = getKey(categoryTitle, option.name);
+            return sum + (quantities[key] || 0);
+        }, 0);
+    };
+
+    // Check if category has reached max
+    const isCategoryMaxed = (categoryTitle: string) => {
+        const category = categories.find(cat => cat.title === categoryTitle);
+        if (!category?.max) return false;
+
+        return getCategoryTotal(categoryTitle) >= category.max;
+    };
+
+    const adjustQty = (option: string, delta: number, categoryTitle: string) => {
+        const category = categories.find(cat => cat.title === categoryTitle);
+        const currentTotal = getCategoryTotal(categoryTitle);
+        const key = getKey(categoryTitle, option);
+        const currentQty = quantities[key] || 0;
+
+        // Prevent increment if at max (unless decrementing)
+        if (delta > 0 && category?.max && currentTotal >= category.max) {
+            return;
+        }
+
+        setQuantities((prev) => ({
+            ...prev,
+            [key]: Math.max(0, currentQty + delta),
+        }));
+    };
+
+    function formatSelections(quantities: Record<string, number>) {
+        const selections: Selections = {
+            swallow: [],
+            protein: [],
+            extraSwallow: [],
+            extraProtein: []
+        };
+
+        for (const [key, qty] of Object.entries(quantities)) {
+            if (qty === 0) continue;
+
+            // Parse the composite key
+            const [categoryTitle, name] = key.split(':');
+
+            // Categorize based on category title
+            if (categoryTitle === "Main Swallow") {
+                selections.swallow.push({ name, qty });
+            } else if (categoryTitle === "Main Protein") {
+                selections.protein.push({ name, qty });
+            } else if (categoryTitle === "Extra Swallow") {
+                selections.extraSwallow.push({ name, qty });
+            } else if (categoryTitle === "Extra Protein") {
+                selections.extraProtein.push({ name, qty });
+            }
+        }
+
+        return selections;
+    }
+
+    return (
+        <Layout>
+            <div className={`bg-primary ${leagueSpartan.className}`}>
+                <div className="bg-white/60 p-12 md:p-24 h-screen overflow-y-scroll">
+                    <nav className="text-gray-600 text-sm mb-4" aria-label="breadcrumb">
+                        <ol className="flex items-center space-x-2">
+                            <li>
+                                <Link
+                                    href="/restaurant-menu"
+                                    className="hover:text-gray-800 font-medium"
+                                >
+                                    Menu
+                                </Link>
+                            </li>
+                            <li>
+                                <span className="text-gray-400">/</span>
+                            </li>
+                            <li className="text-gray-800 font-semibold">
+                                {menuItem?.name}
+                            </li>
+                        </ol>
+                    </nav>
+
+                    <div className="flex flex-col md:flex-row gap-8 md:p-6 mx-auto">
+                        {/* Product Image */}
+                        <div className="md:w-1/2 flex justify-center">
+                            <img
+                                src={`/${menuItem?.name
+                                    ?.split(" ")[0]
+                                    .toLowerCase()}.png`}
+                                alt={menuItem?.name}
+                                className="rounded-2xl shadow-md w-full max-w-md h-[500px] object-cover"
+                            />
+                        </div>
+
+                        {/* Product Options */}
+                        <div className="md:w-1/2 flex flex-col gap-4">
+                            <h1 className="text-2xl font-semibold mb-2 text-black">
+                                {menuItem?.name}
+                            </h1>
+                            <p className="text-gray-600 mb-4">
+                                Customize your order by selecting your preferred proteins and swallows.
+                            </p>
+
+                            <div className="space-y-3">
+                                {categories.map((cat) => {
+                                    const isMaxed = isCategoryMaxed(cat.title);
+                                    const total = getCategoryTotal(cat.title);
+
+                                    return (
+                                        <div
+                                            key={cat.title}
+                                            className={`border rounded-xl overflow-hidden shadow-sm ${isMaxed ? 'opacity-75' : ''
+                                                }`}
+                                        >
+                                            {/* Accordion Header */}
+                                            <button
+                                                onClick={() => toggleAccordion(cat.title)}
+                                                className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-black">
+                                                        {cat.title}
+                                                    </span>
+                                                    {cat.max && (
+                                                        <span className={`text-sm ${isMaxed ? 'text-red-600 font-semibold' : 'text-gray-500'
+                                                            }`}>
+                                                            ({total}/{cat.max})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {open === cat.title ? (
+                                                    <ChevronUp className="w-5 h-5" />
+                                                ) : (
+                                                    <ChevronDown className="w-5 h-5" />
+                                                )}
+                                            </button>
+
+                                            {/* Accordion Content */}
+                                            {open === cat.title && (
+                                                <div className="bg-white divide-y">
+                                                    {cat.options.map((option) => {
+                                                        const key = getKey(cat.title, option.name);
+                                                        const currentQty = quantities[key] || 0;
+                                                        const canIncrement = !isMaxed || currentQty > 0;
+
+                                                        return (
+                                                            <div
+                                                                key={option.name}
+                                                                className="flex justify-between items-center px-4 py-3"
+                                                            >
+                                                                <span className="text-gray-700">
+                                                                    {option.name}
+                                                                </span>
+
+                                                                <div className="flex items-center gap-3">
+                                                                    <button
+                                                                        onClick={() => adjustQty(option.name, -1, cat.title)}
+                                                                        disabled={currentQty === 0}
+                                                                        className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <Minus className="w-4 h-4" />
+                                                                    </button>
+                                                                    <span className="w-5 text-center text-gray-800">
+                                                                        {currentQty}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => adjustQty(option.name, +1, cat.title)}
+                                                                        disabled={!canIncrement && currentQty === 0}
+                                                                        className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <Plus className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* <button
+                                className="mt-6 w-full bg-green-600 text-white py-3 rounded-xl font-medium hover:bg-green-700"
+
+                            >
+                                Add to Cart
+                            </button> */}
+
+                            <Button onClick={() => {
+                                if (menuItem?.id) {
+                                    addItem({
+                                        ...menuItem,
+                                        quantity: 1,
+                                        selections: formatSelections(quantities)
+                                    });
+                                }
+                            }} className="bg-green px-4 py-6 text-base my-3"><FaCartPlus size={25} className="mx-2" /> Add to Cart </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    );
+}
+
+

@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
 import { League_Spartan } from "next/font/google";
+import { useCartStore } from "@/store/cartStore";
 
 const leagueSpartan = League_Spartan({
     weight: '700', // if single weight, otherwise you use array like [400, 500, 700],
@@ -16,6 +17,9 @@ export default function Nav() {
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+
+    const items = useCartStore((state) => state.items);
+    const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -46,6 +50,14 @@ export default function Nav() {
                 <li className={`hover:underline  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                 {/* <li>About Us</li> */}
                 <li className={`hover:underline  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/find-us">Find Us</Link></li>
+                <li className={`hover:underline relative  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/cart">
+                    Cart
+                    {totalItems > 0 && (
+                        <span className="absolute -top-4 -right-4 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            {totalItems}
+                        </span>
+                    )}
+                </Link></li>
                 <li>
                     <a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a>
                 </li>

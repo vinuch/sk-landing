@@ -5,16 +5,20 @@ import { Database } from "@/types_db";
 import { supabase } from "@/utils/supabase/client";
 import { League_Spartan } from "next/font/google";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import SkeletonCard from "@/components/SkeletonCard";
+import { useMenuStore } from "@/store/menuStore";
 type RestaurantMenuProps = {
   preview: boolean;
 };
-type MenuItemsRow = {
+export type MenuItemsRow = {
+  list_price: number;
   category_name: string;
-  id: number;
+  id: string;
   name: string;
 
 }
-const leagueSpartan = League_Spartan({
+export const leagueSpartan = League_Spartan({
   weight: "700", // if single weight, otherwise you use array like [400, 500, 700],
   style: "normal", // if single style, otherwise you use array like ['normal', 'italic']
   subsets: ["latin"],
@@ -22,6 +26,9 @@ const leagueSpartan = League_Spartan({
 export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
   const [menuItems, setMenuItems] = useState<MenuItemsRow[]>([]);
   const [selectedType, setSelectedType] = useState("all");
+  const [loading, setLoading] = useState(true);
+
+  const setData = useMenuStore((state) => state.setData)
 
   // const filteredItems = selectedType === "all"
   //   // @ts-expect-error i dont know how to fix yet
@@ -58,6 +65,16 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
       const dt = await res.json();
 
       setMenuItems(dt)
+      setLoading(false)
+
+      // let data = {
+      //   soupData: dt.filter((item) => item.category_name === "Soups"),
+      //   swallowData: dt.filter((item) => item.category_name === "swallows"),
+      //   proteinData: dt.filter((item) => item.category_name === "Proteins")
+      // }
+
+
+      setData(dt)
 
     };
 
@@ -146,35 +163,45 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
               {/* {JSON.stringify(filteredItems)} */}
               <TabsContent value={selectedType}>
                 <div className="flex gap-10 my-12 flex-wrap justify-center">
-                  {filteredItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="w-full md:w-300px rounded-lg overflow-hidden relative group cursor-pointer hpver:text-white hover:rotate-3 transition-all ease-in-out bg-white/50 bg-cover bg-center bg-repeat"
-                      style={{
-                        backgroundImage: `url(/${item.name
-                          ?.split(" ")[0]
-                          .toLowerCase()}.png), url(/placeholder.png)`,
-                        minHeight: "300px",
-                      }}
-                    >
-                      <div className="flex absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 hover:text-white text-lg h-full">
-                        <a
+                  {loading
+                    ? Array(6) // number of skeletons to show
+                      .fill(0)
+                      .map((_, idx) => <SkeletonCard key={idx} />)
+                    : filteredItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="w-full md:w-300px rounded-lg overflow-hidden relative group cursor-pointer hpver:text-white hover:rotate-3 transition-all ease-in-out bg-white/50 bg-cover bg-center bg-repeat"
+                        style={{
+                          backgroundImage: `url(/${item.name
+                            ?.split(" ")[0]
+                            .toLowerCase()}.png), url(/placeholder.png)`,
+                          minHeight: "300px",
+                        }}
+                      >
+                        <Link href={`/restaurant-menu/${item.id}`}>
+
+                          <div className="flex absolute top-0 items-end w-full p-4 hover:pb-8 transition-all bg-black/10 hover:bg-black/40 hover:text-white text-lg h-full">
+                            {/* <a
                           href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20order%20${item.name}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={handleMenuItemClick}
-                        >
-                          <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">
-                            View & Order on Whatsapp
-                          </p>
-                        </a>
-                        <div className="flex justify-between w-full">
-                          <span>{item.name}</span>
-                          <span>{item.category_name}</span>
-                        </div>
+                        > */}
+
+                            <p className="absolute text-center hover:underline top-32 -translate-x-80 group-hover:translate-x-0 transition-all">
+                              Click to Order
+                            </p>
+
+                            {/* </a> */}
+                            <div className="flex justify-between w-full">
+                              <span>{item.name}</span>
+                              <span>₦ {item.list_price}</span>
+                            </div>
+                          </div>
+                        </Link>
+
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </TabsContent>
             </Tabs>

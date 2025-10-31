@@ -4,7 +4,7 @@ import Nav from "./nav";
 import Image from 'next/image';
 
 type LayoutProps = {
-    preview: boolean;
+    preview?: boolean;
     children: React.ReactNode;
 };
 
