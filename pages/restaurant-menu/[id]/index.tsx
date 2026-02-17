@@ -601,6 +601,7 @@ export default function MenuItem() {
                                                         addItem({
                                                             ...menuItem,
                                                             id: `${menuItem.id}-${Date.now()}`,
+                                                            productRef: String(menuItem.id),
                                                             quantity: 1,
                                                             subTotal: subTotal,
                                                             selections: selections

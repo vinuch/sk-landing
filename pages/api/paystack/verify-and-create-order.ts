@@ -166,6 +166,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .single();
 
         if (enrichedInsert.error) {
+            // Race-safe idempotency: if another request inserted same payment_reference first,
+            // return the existing order instead of surfacing a 500.
+            if (enrichedInsert.error.code === "23505") {
+                const duplicateOrder = await supabaseAdmin
+                    .from("Orders")
+                    .select("id")
+                    .eq("payment_reference", reference)
+                    .maybeSingle();
+
+                if (duplicateOrder.data?.id) {
+                    await supabaseAdmin
+                        .from("checkout_sessions")
+                        .update({
+                            status: "paid",
+                            paid_at: new Date().toISOString(),
+                            order_id: duplicateOrder.data.id,
+                        })
+                        .eq("id", checkoutSession.id);
+
+                    return res.status(200).json({
+                        success: true,
+                        orderId: duplicateOrder.data.id,
+                        reference,
+                        idempotent: true,
+                    });
+                }
+            }
+
             return res.status(500).json({
                 error: "Could not create order with user data",
                 details: enrichedInsert.error.message,

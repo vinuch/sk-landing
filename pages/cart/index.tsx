@@ -11,6 +11,7 @@ import useUserProfile from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
+import { supabase } from '@/lib/supabaseClient';
 
 
 export default function CartPage() {
@@ -113,14 +114,22 @@ export default function CartPage() {
 
         try {
             setPlacingOrder(true);
+            const {
+                data: { session: freshSession },
+            } = await supabase.auth.getSession();
+            const accessToken = freshSession?.access_token || session?.access_token;
+
+            if (!accessToken) {
+                setPlacingOrder(false);
+                toast.error('Your login session expired. Please login again.');
+                return;
+            }
 
             const initRes = await fetch('/api/paystack/initiate-checkout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(session?.access_token
-                        ? { Authorization: `Bearer ${session.access_token}` }
-                        : {}),
+                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
                     paymentMethod,
@@ -128,7 +137,7 @@ export default function CartPage() {
                     deliveryInstructions,
                     vendorInstructions,
                     items: items.map((item) => ({
-                        id: item.id,
+                        id: item.productRef || item.id,
                         quantity: item.quantity,
                     })),
                 }),
@@ -177,13 +186,21 @@ export default function CartPage() {
                     ],
                 },
                 onSuccess: async (transaction: { reference?: string }) => {
+                    const {
+                        data: { session: verifySession },
+                    } = await supabase.auth.getSession();
+                    const verifyAccessToken = verifySession?.access_token || session?.access_token;
+                    if (!verifyAccessToken) {
+                        setPlacingOrder(false);
+                        toast.error('Your login session expired. Please login again.');
+                        return;
+                    }
+
                     const verifyRes = await fetch('/api/paystack/verify-and-create-order', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...(session?.access_token
-                                ? { Authorization: `Bearer ${session.access_token}` }
-                                : {}),
+                            Authorization: `Bearer ${verifyAccessToken}`,
                         },
                         body: JSON.stringify({
                             reference: transaction?.reference || reference,

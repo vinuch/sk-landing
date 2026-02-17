@@ -51,6 +51,16 @@ export function makeServerReference() {
     return `sk_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
 }
 
+function normalizeProductId(rawId: unknown) {
+    const value = String(rawId ?? "").trim();
+    if (!value) return "";
+
+    if (/^\d+$/.test(value)) return value;
+
+    const leadingDigits = value.match(/^(\d+)/);
+    return leadingDigits?.[1] || "";
+}
+
 export function sanitizeRequestedItems(items: unknown): RequestedCheckoutItem[] {
     if (!Array.isArray(items)) return [];
 
@@ -59,7 +69,8 @@ export function sanitizeRequestedItems(items: unknown): RequestedCheckoutItem[] 
     for (const raw of items) {
         if (!raw || typeof raw !== "object") continue;
 
-        const id = String((raw as Record<string, unknown>).id ?? "").trim();
+        const record = raw as Record<string, unknown>;
+        const id = normalizeProductId(record.productRef ?? record.id);
         const quantity = Number((raw as Record<string, unknown>).quantity ?? 0);
 
         if (!id) continue;
