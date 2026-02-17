@@ -55,6 +55,21 @@ export default function Home({ preview }: HomeProps) {
   const plugin = React.useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
   )
+  const [contactName, setContactName] = React.useState("");
+  const [contactPhone, setContactPhone] = React.useState("");
+  const [contactMessage, setContactMessage] = React.useState("");
+  const [inquiryType, setInquiryType] = React.useState("");
+  const [inquiryOther, setInquiryOther] = React.useState("");
+  const [submittingInquiry, setSubmittingInquiry] = React.useState(false);
+  const [inquiryStatus, setInquiryStatus] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
+  const inquiryOptions = [
+    { value: "general", label: "General Question" },
+    { value: "order_support", label: "Order Support" },
+    { value: "custom_order", label: "Custom Order" },
+    { value: "catering", label: "Catering / Event" },
+    { value: "partnership", label: "Partnership / Collaboration" },
+    { value: "other", label: "Other" },
+  ];
 
   //   const [menu, setMenu] = React.useState([
   //     {
@@ -106,6 +121,69 @@ export default function Home({ preview }: HomeProps) {
       console.warn('fbq is not defined');
     }
   }
+
+  const handleInquirySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setInquiryStatus(null);
+
+    if (!contactName.trim() || !contactPhone.trim() || !contactMessage.trim() || !inquiryType) {
+      setInquiryStatus({ type: "error", message: "Please fill all required fields." });
+      return;
+    }
+
+    if (inquiryType === "other" && !inquiryOther.trim()) {
+      setInquiryStatus({ type: "error", message: "Please tell us what you are reaching out for." });
+      return;
+    }
+
+    try {
+      setSubmittingInquiry(true);
+      const response = await fetch("/api/contact-us", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactName.trim(),
+          phone: contactPhone.trim(),
+          message: contactMessage.trim(),
+          inquiryType,
+          inquiryOther: inquiryType === "other" ? inquiryOther.trim() : "",
+        }),
+      });
+
+      const raw = await response.text();
+      let json: any = {};
+      try {
+        json = raw ? JSON.parse(raw) : {};
+      } catch {
+        json = {};
+      }
+
+      if (!response.ok || !json?.success) {
+        setInquiryStatus({
+          type: "error",
+          message: json?.error || "Could not submit your message. Please try again.",
+        });
+        return;
+      }
+
+      setContactName("");
+      setContactPhone("");
+      setContactMessage("");
+      setInquiryType("");
+      setInquiryOther("");
+      setInquiryStatus({
+        type: "success",
+        message: "Your message has been recorded and we'll get back to you.",
+      });
+    } catch {
+      setInquiryStatus({
+        type: "error",
+        message: "Could not submit your message. Please try again.",
+      });
+    } finally {
+      setSubmittingInquiry(false);
+    }
+  };
   return (
     <Layout preview={preview}>
       <div className={`${leagueSpartan.className}`}>
@@ -301,13 +379,76 @@ export default function Home({ preview }: HomeProps) {
         <div className="bg-white/80 p-12 md:p-24 text-center text-black">
           <h3 className="text-black text-4xl text-center my-8">Send an Inquiry</h3>
 
-          <div className="flex flex-wrap justify-between md:mx-auto gap-4 w-full md:w-7/12 mb-6">
-            <input type="text" name="name" id="name__contact" className="p-4 rounded-md border border-primary w-full md:w-48p" placeholder="Name" />
-            <input type="text" name="name" id="phone__contact" className="p-4 rounded-md border border-primary w-full md:w-48p" placeholder="Phone" />
-            <textarea rows={8} name="message" id="message__contact" className="p-4 rounded-md border border-primary w-full" placeholder="Enter message here" />
-          </div>
+          <form onSubmit={handleInquirySubmit} className="md:mx-auto w-full md:w-7/12">
+            <div className="flex flex-wrap justify-between gap-4 mb-4">
+              <input
+                type="text"
+                name="name"
+                id="name__contact"
+                className="p-4 rounded-md border border-primary w-full md:w-48p text-gray-900 placeholder:text-gray-500"
+                placeholder="Name"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+              <input
+                type="text"
+                name="phone"
+                id="phone__contact"
+                className="p-4 rounded-md border border-primary w-full md:w-48p text-gray-900 placeholder:text-gray-500"
+                placeholder="Phone"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+              />
+              <select
+                name="inquiry_type"
+                id="inquiry_type_contact"
+                className="p-4 rounded-md border border-primary w-full text-gray-900"
+                value={inquiryType}
+                onChange={(e) => setInquiryType(e.target.value)}
+              >
+                <option value="">Select what you are reaching out for</option>
+                {inquiryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {inquiryType === "other" ? (
+                <input
+                  type="text"
+                  name="inquiry_other"
+                  id="inquiry_other_contact"
+                  className="p-4 rounded-md border border-primary w-full text-gray-900 placeholder:text-gray-500"
+                  placeholder="Please specify your reason"
+                  value={inquiryOther}
+                  onChange={(e) => setInquiryOther(e.target.value)}
+                />
+              ) : null}
+              <textarea
+                rows={8}
+                name="message"
+                id="message__contact"
+                className="p-4 rounded-md border border-primary w-full text-gray-900 placeholder:text-gray-500"
+                placeholder="Enter message here"
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+              />
+            </div>
 
-          <Button className="text-black my-4 border-primary text-xl px-20 py-6 hover:text-white hover:bg-primary">Send</Button>
+            <Button
+              type="submit"
+              disabled={submittingInquiry}
+              className="text-black my-4 border-primary text-xl px-20 py-6 hover:text-white hover:bg-primary disabled:opacity-70"
+            >
+              {submittingInquiry ? "Sending..." : "Send"}
+            </Button>
+
+            {inquiryStatus ? (
+              <p className={`text-sm mt-2 ${inquiryStatus.type === "success" ? "text-green-700" : "text-red-600"}`}>
+                {inquiryStatus.message}
+              </p>
+            ) : null}
+          </form>
 
         </div>
 

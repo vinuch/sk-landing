@@ -6,6 +6,7 @@ type CartItem = {
     id: string;
     name: string;
     list_price: number;
+    subTotal: number;
     category_name: string;
     quantity: number;
     selections: Selections;

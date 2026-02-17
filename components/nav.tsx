@@ -7,6 +7,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { League_Spartan } from "next/font/google";
 import { useCartStore } from "@/store/cartStore";
+import SignupForm from "./signupForm";
+import useAuth from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabaseClient";
+import useUserProfile from "@/hooks/useUserProfile";
+import { FaUserCircle } from "react-icons/fa";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import AddressAutocomplete from "./addressAutocomplete";
+import { toast } from "sonner";
 
 const leagueSpartan = League_Spartan({
     weight: '700', // if single weight, otherwise you use array like [400, 500, 700],
@@ -17,6 +25,11 @@ export default function Nav() {
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
+    const [savingAddress, setSavingAddress] = useState(false);
+    const { user, loading } = useAuth();
+    const { profile, addresses, defaultAddressLine, saveDefaultAddress, loading: profileLoading } = useUserProfile();
+    const hasOnboarded = Boolean(profile?.onboarded) && Boolean(profile?.full_name) && Boolean(profile?.phone) && addresses.length > 0;
 
     const items = useCartStore((state) => state.items);
     const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -36,6 +49,75 @@ export default function Nav() {
             window.removeEventListener("scroll", handleScroll);
         };
     }, []);
+
+    const userDisplayName = profile?.full_name || user?.email || user?.phone;
+
+    const handleAddressSelect = async (address: string) => {
+        setSavingAddress(true);
+        const result = await saveDefaultAddress(address);
+        setSavingAddress(false);
+
+        if (result.error) {
+            toast.error(result.error);
+            return;
+        }
+
+        toast.success("Delivery location updated");
+        setLocationPopoverOpen(false);
+    };
+
+    const locationDisplay = defaultAddressLine || "Set delivery location";
+
+    const LocationPicker = ({ compact = false }: { compact?: boolean }) => (
+        <Popover open={locationPopoverOpen} onOpenChange={setLocationPopoverOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    className={`justify-start text-left ${compact ? "w-full" : "w-72"} h-auto py-2`}
+                >
+                    <div className="min-w-0">
+                        <p className="text-[11px] text-gray-500">Delivery Location</p>
+                        <p className="text-sm text-gray-900 truncate">{locationDisplay}</p>
+                    </div>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"}`}>
+                <p className="text-sm font-medium mb-2">Choose delivery location</p>
+                <AddressAutocomplete
+                    value={defaultAddressLine}
+                    disabled={profileLoading || savingAddress}
+                    onAddressSelect={handleAddressSelect}
+                />
+            </PopoverContent>
+        </Popover>
+    );
+
+    const UserMenu = () => (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <FaUserCircle size={18} />
+                    <span className="max-w-36 truncate">{userDisplayName}</span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56">
+                <Link href="/my-orders" className="block w-full text-left text-sm px-2 py-2 rounded hover:bg-gray-100">
+                    My Orders
+                </Link>
+                <button
+                    type="button"
+                    className="w-full text-left text-sm px-2 py-2 rounded text-gray-500 cursor-not-allowed"
+                    disabled
+                >
+                    Profile (coming soon)
+                </button>
+                <Button className="w-full mt-2" variant="outline" onClick={() => supabase.auth.signOut()}>
+                    Logout
+                </Button>
+            </PopoverContent>
+        </Popover>
+    );
+
     return (
         <div className={`${leagueSpartan.className} sticky text-black top-0 flex items-center justify-between p-4 z-50 transition-all   ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "bg-white shadow-lg" : "bg-transparent"}`}>
             <h3 className="font-bold text-xl w-10/12 md:w-4/12  ">
@@ -59,7 +141,14 @@ export default function Nav() {
                     )}
                 </Link></li>
                 <li>
-                    <a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a>
+                    {loading ? null : user && hasOnboarded ? (
+                        <div className="flex items-center gap-3">
+                            <LocationPicker />
+                            <UserMenu />
+                        </div>
+                    ) : (
+                        <SignupForm />
+                    )}
                 </li>
             </ul>
             <Button className="md:hidden" variant="ghost" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? (<IoIosClose size={25} />) : (<IoIosMenu size={25} />)}</Button>
@@ -72,7 +161,25 @@ export default function Nav() {
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                             {/* <li className="my-8">About Us</li> */}
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/find-us">Find Us</Link></li>
-                            <li className="my-8" onClick={() => setMenuOpen(false)}><a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a></li>
+                            <li className="my-8" onClick={() => setMenuOpen(false)}><a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-primary-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a></li>
+                            {!loading && (
+                                <li className="my-8">
+                                    {user ? (
+                                        hasOnboarded ? (
+                                            <div className="space-y-2">
+                                            <div className="flex justify-center">
+                                                <UserMenu />
+                                            </div>
+                                            <LocationPicker compact />
+                                            </div>
+                                        ) : (
+                                            <SignupForm />
+                                        )
+                                    ) : (
+                                        <SignupForm />
+                                    )}
+                                </li>
+                            )}
                         </ul>
                     </div>
                 ) : null

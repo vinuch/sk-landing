@@ -1,19 +1,37 @@
 'use client';
 
 import Layout from '@/components/layout';
+import AddressAutocomplete from '@/components/addressAutocomplete';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import { leagueSpartan } from '../restaurant-menu';
 import { Selections } from '../restaurant-menu/[id]';
-import { useEffect, useState } from 'react';
-import { useMenuStore } from '@/store/menuStore';
+import { useState } from 'react';
+import useUserProfile from '@/hooks/useUserProfile';
+import { toast } from 'sonner';
+import useAuth from '@/hooks/useAuth';
+import { useRouter } from 'next/router';
 
 
 export default function CartPage() {
-    const { items, removeItem, addItem, clearCart } = useCartStore();
+    const router = useRouter();
+    const { items, removeItem, clearCart } = useCartStore();
+    const { defaultAddressLine, saveDefaultAddress, loading: profileLoading } = useUserProfile();
+    const { user, session } = useAuth();
+    const [paymentMethod, setPaymentMethod] = useState<'pay_online' | ''>('');
+    const [editingPayment, setEditingPayment] = useState(false);
+    const [editingAddress, setEditingAddress] = useState(false);
+    const [savingAddress, setSavingAddress] = useState(false);
+    const [placingOrder, setPlacingOrder] = useState(false);
+    const [deliveryInstructions, setDeliveryInstructions] = useState('');
+    const [vendorInstructions, setVendorInstructions] = useState('');
+    const [deliveryDraft, setDeliveryDraft] = useState('');
+    const [vendorDraft, setVendorDraft] = useState('');
+    const [editingDelivery, setEditingDelivery] = useState(false);
+    const [editingVendor, setEditingVendor] = useState(false);
 
     const totalPrice = items.reduce(
-        (acc, item) => acc + (item.list_price ?? item.list_price) * item.quantity,
+        (acc, item) => acc + (item.subTotal ?? item.subTotal) * item.quantity,
         0
     );
 
@@ -58,6 +76,136 @@ export default function CartPage() {
         return parts.join(' ') || 'No selections';
     }
 
+    const paymentValue = paymentMethod === 'pay_online' ? 'Pay online (Paystack)' : 'choose';
+    const addressValue = defaultAddressLine || 'choose';
+
+    const handleAddressSelect = async (address: string) => {
+        setSavingAddress(true);
+        const result = await saveDefaultAddress(address);
+        setSavingAddress(false);
+
+        if (result.error) {
+            toast.error(result.error);
+            return;
+        }
+
+        toast.success('Delivery address updated');
+        setEditingAddress(false);
+    };
+
+    const missingLogin = !user?.id;
+    const missingPayment = paymentMethod !== 'pay_online';
+    const missingAddress = !defaultAddressLine;
+    const canCheckout = !missingLogin && !missingPayment && !missingAddress;
+
+    const handlePlaceOrder = async () => {
+        if (!user?.id) {
+            toast.error('Please login before placing an order');
+            return;
+        }
+
+        if (!canCheckout) {
+            toast.error('Set payment method and delivery address first');
+            return;
+        }
+
+        const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+        if (!publicKey) {
+            toast.error('Missing Paystack public key');
+            return;
+        }
+
+        const payerEmail = user?.email || `guest-${(user?.id || Date.now().toString()).slice(0, 8)}@satellitekitchen.ng`;
+        const reference = `sk_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+
+        try {
+            setPlacingOrder(true);
+            const PaystackPop = (await import('@paystack/inline-js')).default;
+            const popup = new PaystackPop();
+
+            popup.newTransaction({
+                key: publicKey,
+                email: payerEmail,
+                amount: Math.round(totalPrice * 100),
+                currency: 'NGN',
+                ref: reference,
+                metadata: {
+                    custom_fields: [
+                        {
+                            display_name: 'Delivery Address',
+                            variable_name: 'delivery_address',
+                            value: defaultAddressLine,
+                        },
+                    ],
+                },
+                onSuccess: async (transaction: { reference?: string }) => {
+                    const verifyRes = await fetch('/api/paystack/verify-and-create-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(session?.access_token
+                                ? { Authorization: `Bearer ${session.access_token}` }
+                                : {}),
+                        },
+                        body: JSON.stringify({
+                            reference: transaction?.reference || reference,
+                            totalAmount: totalPrice,
+                            paymentMethod: paymentMethod,
+                            deliveryAddress: defaultAddressLine,
+                            deliveryInstructions,
+                            vendorInstructions,
+                            userId: user?.id || null,
+                            items: items.map((item) => ({
+                                id: item.id,
+                                name: item.name,
+                                quantity: item.quantity,
+                                subTotal: item.subTotal,
+                                list_price: item.list_price,
+                            })),
+                        }),
+                    });
+
+                    const raw = await verifyRes.text();
+                    let verifyJson: any = null;
+                    try {
+                        verifyJson = raw ? JSON.parse(raw) : {};
+                    } catch {
+                        verifyJson = {
+                            error: 'Non-JSON response from order API',
+                            details: raw?.slice(0, 300),
+                        };
+                    }
+                    setPlacingOrder(false);
+
+                    if (!verifyRes.ok || !verifyJson?.success) {
+                        toast.error(
+                            verifyJson?.error ||
+                            verifyJson?.details ||
+                            `Payment verified but order creation failed (HTTP ${verifyRes.status})`
+                        );
+                        return;
+                    }
+
+                    clearCart();
+                    setPaymentMethod('');
+                    setDeliveryInstructions('');
+                    setVendorInstructions('');
+                    setDeliveryDraft('');
+                    setVendorDraft('');
+                    toast.success('Payment successful. Order created.');
+                    router.push('/my-orders');
+                },
+                onCancel: () => {
+                    setPlacingOrder(false);
+                    toast.error('Payment cancelled');
+                },
+            });
+        } catch (error: any) {
+            setPlacingOrder(false);
+            toast.error(error?.message || 'Could not start payment');
+        }
+    };
+
     // useEffect(() => {
     //     useMenuStore.persist.onFinishHydration(() => {
     //         console.log("✅ Menu store rehydrated", useMenuStore.getState());
@@ -79,7 +227,7 @@ export default function CartPage() {
                     <div className="relative z-20 text-center">
 
                         <h1 className="text-2xl font-semibold text-gray-700 mb-4">
-                            Your cart is empty 🛍️ {JSON.stringify(items)}
+                            Your cart is empty 🛍️
                         </h1>
                         <Link
                             href="/restaurant-menu"
@@ -121,14 +269,14 @@ export default function CartPage() {
                                             <p className="font-medium text-black">{item.name}</p>
                                             <p className="font-medium text-black w-64">{formatSelectionsDescription(item.selections)}</p>
                                             <p className="text-gray-500 text-sm">
-                                                ₦{(item.list_price ?? item.list_price).toLocaleString()}
+                                                ₦{(item.subTotal ?? item.subTotal).toLocaleString()}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* ⚙️ Right: Quantity Controls */}
                                     <div className="flex items-center gap-4">
-                                        <button
+                                        {/* <button
                                             onClick={() =>
                                                 addItem({ ...item, quantity: -1 }) // reuses same logic to subtract
                                             }
@@ -145,7 +293,7 @@ export default function CartPage() {
                                             className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100"
                                         >
                                             +
-                                        </button>
+                                        </button> */}
                                         <button
                                             onClick={() => removeItem(item.id)}
                                             className="ml-3 text-red-500 hover:text-red-700 text-sm"
@@ -165,21 +313,188 @@ export default function CartPage() {
                             </span>
                         </div>
 
+
+                        <hr className="my-6" />
+
+                        <div className="text-black">
+                            <div className="flex justify-between items-start my-2 gap-3">
+                                <p>
+                                    Payment Method <span className="text-red-600">*</span>
+                                    {missingPayment && <span className="text-xs text-red-600 ml-2">required</span>}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="text-red-500 hover:text-red-700 text-right"
+                                    onClick={() => setEditingPayment((prev) => !prev)}
+                                >
+                                    {paymentValue}
+                                </button>
+                            </div>
+                            {editingPayment && (
+                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                    <button
+                                        type="button"
+                                        className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'pay_online' ? 'border-primary text-primary' : 'border-gray-300'
+                                            }`}
+                                        onClick={() => {
+                                            setPaymentMethod('pay_online');
+                                            setEditingPayment(false);
+                                        }}
+                                    >
+                                        Pay online (Paystack)
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-start my-2 gap-3">
+                                <p>
+                                    Delivery Address <span className="text-red-600">*</span>
+                                    {missingAddress && <span className="text-xs text-red-600 ml-2">required</span>}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                    onClick={() => setEditingAddress((prev) => !prev)}
+                                >
+                                    {addressValue}
+                                </button>
+                            </div>
+                            {editingAddress && (
+                                <div className="mb-3">
+                                    <AddressAutocomplete
+                                        value={defaultAddressLine}
+                                        disabled={profileLoading || savingAddress}
+                                        onAddressSelect={handleAddressSelect}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-start my-2 gap-3">
+                                <p>Delivery Instructions</p>
+                                <button
+                                    type="button"
+                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                    onClick={() => {
+                                        setDeliveryDraft(deliveryInstructions);
+                                        setEditingDelivery((prev) => !prev);
+                                    }}
+                                >
+                                    {deliveryInstructions || 'choose'}
+                                </button>
+                            </div>
+                            {editingDelivery && (
+                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                    <textarea
+                                        rows={3}
+                                        className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
+                                        placeholder="Add delivery instructions"
+                                        value={deliveryDraft}
+                                        onChange={(e) => setDeliveryDraft(e.target.value)}
+                                    />
+                                    <div className="mt-2 flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm border rounded-md"
+                                            onClick={() => setEditingDelivery(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm bg-primary text-white rounded-md"
+                                            onClick={() => {
+                                                setDeliveryInstructions(deliveryDraft.trim());
+                                                setEditingDelivery(false);
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-start my-2 gap-3">
+                                <p>Vendor Instructions</p>
+                                <button
+                                    type="button"
+                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                    onClick={() => {
+                                        setVendorDraft(vendorInstructions);
+                                        setEditingVendor((prev) => !prev);
+                                    }}
+                                >
+                                    {vendorInstructions || 'choose'}
+                                </button>
+                            </div>
+                            {editingVendor && (
+                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                    <textarea
+                                        rows={3}
+                                        className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
+                                        placeholder="Add vendor instructions"
+                                        value={vendorDraft}
+                                        onChange={(e) => setVendorDraft(e.target.value)}
+                                    />
+                                    <div className="mt-2 flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm border rounded-md"
+                                            onClick={() => setEditingVendor(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm bg-primary text-white rounded-md"
+                                            onClick={() => {
+                                                setVendorInstructions(vendorDraft.trim());
+                                                setEditingVendor(false);
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+
                         {/* 🧹 Actions */}
+                        {!canCheckout && (
+                            <p className="text-sm text-red-600 mb-3">
+                                {missingLogin && 'Login required. '}
+                                {missingPayment && 'Choose payment method. '}
+                                {missingAddress && 'Choose delivery address.'}
+                            </p>
+                        )}
                         <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                            <Link
+                            {/* <Link
                                 href="/restaurant-menu"
                                 className="flex-1 text-center border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50"
                             >
                                 Continue Shopping
-                            </Link>
+                            </Link> */}
                             <button
                                 onClick={clearCart}
                                 className="flex-1 text-center bg-red-500 text-white py-3 rounded-xl hover:bg-red-600"
                             >
                                 Clear Cart
                             </button>
+                            <button
+                                onClick={handlePlaceOrder}
+                                disabled={placingOrder || !canCheckout}
+                                className={`flex-1 text-center text-white py-3 rounded-xl ${placingOrder || !canCheckout
+                                    ? 'bg-green-400 cursor-not-allowed opacity-70'
+                                    : 'bg-green-800 hover:bg-green-700'
+                                    }`}
+                            >
+                                {placingOrder ? 'Processing...' : 'Place Order'}
+                            </button>
                         </div>
+
+
+
                     </div>
 
                 </div>

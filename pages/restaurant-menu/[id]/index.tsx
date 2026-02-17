@@ -8,10 +8,13 @@ import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { FaCartPlus } from "react-icons/fa";
 import { useMenuStore } from "@/store/menuStore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner"
 
 export type SelectionItem = {
     name: string
     qty: number
+    price: number;
 }
 
 export type Selections = {
@@ -214,6 +217,13 @@ export type Selections = {
 export default function MenuItem() {
     const [menuItem, setMenuItem] = useState<MenuItemsRow>();
     const [open, setOpen] = useState<string | null>(null);
+    const [subTotal, setSubtotal] = useState<number>(0)
+    const [selections, setSelections] = useState<Selections>({
+        swallow: [],
+        protein: [],
+        extraSwallow: [],
+        extraProtein: [],
+    });
     // Store quantities with composite key: "categoryTitle:optionName"
     const [quantities, setQuantities] = useState<Record<string, number>>({});
 
@@ -236,21 +246,25 @@ export default function MenuItem() {
     const categories = [
         {
             title: "Main Protein",
+            required: true,
             max: 2,
             options: categoryMap.Proteins || [],
         },
         {
             title: "Main Swallow",
+            required: true,
             max: 1,
             options: categoryMap.swallows || [],
         },
         {
             title: "Extra Protein",
+            required: false,
             max: 10,
             options: categoryMap.Proteins || [],
         },
         {
             title: "Extra Swallow",
+            required: false,
             max: 10,
             options: categoryMap.swallows || [],
         },
@@ -266,6 +280,7 @@ export default function MenuItem() {
             }
             const dt = await res.json();
             setMenuItem(dt);
+            setSubtotal(dt.list_price)
         };
 
         fetchMenuItem();
@@ -317,23 +332,6 @@ export default function MenuItem() {
         return getCategoryTotal(categoryTitle) >= category.max;
     };
 
-    const adjustQty = (option: string, delta: number, categoryTitle: string) => {
-        const category = categories.find(cat => cat.title === categoryTitle);
-        const currentTotal = getCategoryTotal(categoryTitle);
-        const key = getKey(categoryTitle, option);
-        const currentQty = quantities[key] || 0;
-
-        // Prevent increment if at max (unless decrementing)
-        if (delta > 0 && category?.max && currentTotal >= category.max) {
-            return;
-        }
-
-        setQuantities((prev) => ({
-            ...prev,
-            [key]: Math.max(0, currentQty + delta),
-        }));
-    };
-
     function formatSelections(quantities: Record<string, number>) {
         const selections: Selections = {
             swallow: [],
@@ -348,20 +346,117 @@ export default function MenuItem() {
             // Parse the composite key
             const [categoryTitle, name] = key.split(':');
 
+            const category = categories.find(cat => cat.title === categoryTitle);
+            const item = category?.options.find(i => i.name === name);
+            const price = item?.price ?? 0;
+
+
+
             // Categorize based on category title
             if (categoryTitle === "Main Swallow") {
-                selections.swallow.push({ name, qty });
+                selections.swallow.push({ name, qty, price });
             } else if (categoryTitle === "Main Protein") {
-                selections.protein.push({ name, qty });
+                selections.protein.push({ name, qty, price });
             } else if (categoryTitle === "Extra Swallow") {
-                selections.extraSwallow.push({ name, qty });
+                selections.extraSwallow.push({ name, qty, price });
             } else if (categoryTitle === "Extra Protein") {
-                selections.extraProtein.push({ name, qty });
+                selections.extraProtein.push({ name, qty, price });
             }
         }
 
-        return selections;
+
+
+        setSelections(selections)
+        // return selections;
     }
+
+    const adjustQty = (option: string, delta: number, categoryTitle: string) => {
+        const category = categories.find(cat => cat.title === categoryTitle);
+        const currentTotal = getCategoryTotal(categoryTitle);
+        const key = getKey(categoryTitle, option);
+        const currentQty = quantities[key] || 0;
+
+        // Prevent increment if at max (unless decrementing)
+        if (delta > 0 && category?.max && currentTotal >= category.max) {
+            return;
+        }
+
+
+        setQuantities((prev) => ({
+            ...prev,
+            [key]: Math.max(0, currentQty + delta),
+        }));
+
+
+    };
+
+    useEffect(() => {
+        formatSelections(quantities);
+
+    }, [quantities])
+    useEffect(() => {
+        calculateSubtotal(menuItem?.list_price || 0, selections)
+
+    }, [selections])
+
+
+
+    function calculateSubtotal(
+        basePrice: number,
+        selections: Selections
+    ) {
+        let subtotal = basePrice;
+
+        // Flatten all selection groups into a single array
+        const allSelections = [
+            // ...selections.swallow,
+            // ...selections.protein,
+            ...selections.extraSwallow,
+            ...selections.extraProtein
+        ];
+
+        let extrasTotal = 0
+        for (const item of allSelections) {
+            extrasTotal += item.price * item.qty;
+        }
+
+        // subtotal = subtotal + extrasTotal
+        let sub = subtotal + extrasTotal;
+        setSubtotal(sub);
+    }
+
+    const clearSelections = () => {
+        setQuantities({}); // reset all quantities to zero
+        setSubtotal(menuItem?.list_price || 0);
+    };
+
+    function areRequiredSelectionsComplete(
+        quantities: Record<string, number>,
+        categories: {
+            title: string;
+            required: boolean;
+            max: number;
+            options: any[];
+        }[]
+    ): boolean {
+        for (const category of categories) {
+            if (!category.required) continue; // skip non-required ones
+
+            // Sum up all quantities in this category
+            const totalQty = Object.entries(quantities)
+                .filter(([key]) => key.startsWith(category.title + ":"))
+                .reduce((sum, [, qty]) => sum + qty, 0);
+
+            // Required categories must have total equal to max
+            if (totalQty < category.max) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    const canAddToCart = areRequiredSelectionsComplete(quantities, categories);
 
     return (
         <Layout>
@@ -425,7 +520,7 @@ export default function MenuItem() {
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-black">
-                                                        {cat.title}
+                                                        {cat.title} <span className="text-red-700 text-xl">{cat.required ? '*' : null}</span>
                                                     </span>
                                                     {cat.max && (
                                                         <span className={`text-sm ${isMaxed ? 'text-red-600 font-semibold' : 'text-gray-500'
@@ -494,15 +589,44 @@ export default function MenuItem() {
                                 Add to Cart
                             </button> */}
 
-                            <Button onClick={() => {
-                                if (menuItem?.id) {
-                                    addItem({
-                                        ...menuItem,
-                                        quantity: 1,
-                                        selections: formatSelections(quantities)
-                                    });
-                                }
-                            }} className="bg-green px-4 py-6 text-base my-3"><FaCartPlus size={25} className="mx-2" /> Add to Cart </Button>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className={!canAddToCart ? "cursor-not-allowed" : ""}>
+                                            <Button
+                                                disabled={!canAddToCart}
+                                                onClick={() => {
+                                                    if (menuItem?.id) {
+                                                        addItem({
+                                                            ...menuItem,
+                                                            id: `${menuItem.id}-${Date.now()}`,
+                                                            quantity: 1,
+                                                            subTotal: subTotal,
+                                                            selections: selections
+                                                        });
+                                                        toast.success("Added to Cart")
+
+
+                                                        // Clear selections
+                                                        clearSelections();
+                                                    }
+                                                }}
+                                                className="bg-primary-green px-4 py-6 text-base my-3 w-full"
+                                            >
+                                                <FaCartPlus size={25} className="mx-2" /> Add to Cart {subTotal}
+                                            </Button>
+                                        </span>
+                                    </TooltipTrigger>
+
+                                    {!canAddToCart && (
+                                        <TooltipContent>
+                                            Please select required fields (Main Protein & Main Swallow)
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
+
                         </div>
                     </div>
                 </div>

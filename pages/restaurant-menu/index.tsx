@@ -2,7 +2,6 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Layout from "@/components/layout";
 import { Database } from "@/types_db";
-import { supabase } from "@/utils/supabase/client";
 import { League_Spartan } from "next/font/google";
 import { useEffect, useState } from "react";
 import Link from "next/link";
