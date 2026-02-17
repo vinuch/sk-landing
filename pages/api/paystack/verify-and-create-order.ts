@@ -3,19 +3,6 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 type VerifyAndCreateBody = {
     reference?: string;
-    totalAmount?: number;
-    paymentMethod?: string;
-    deliveryAddress?: string;
-    deliveryInstructions?: string;
-    vendorInstructions?: string;
-    userId?: string | null;
-    items?: Array<{
-        id: string;
-        name: string;
-        quantity: number;
-        subTotal?: number;
-        list_price?: number;
-    }>;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -34,31 +21,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const body = req.body as VerifyAndCreateBody;
     const reference = body.reference?.trim();
-    const totalAmount = Number(body.totalAmount || 0);
     const authHeader = req.headers.authorization || "";
-    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!reference) {
         return res.status(400).json({ error: "Missing transaction reference" });
     }
 
-    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
-        return res.status(400).json({ error: "Invalid total amount" });
+    if (!bearerToken) {
+        return res.status(401).json({ error: "Missing auth token" });
     }
 
     try {
-        let resolvedUserId: string | null = body.userId ?? null;
-
-        if (bearerToken) {
-            const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearerToken);
-            if (authError || !authData?.user?.id) {
-                return res.status(401).json({ error: "Invalid auth token" });
-            }
-            resolvedUserId = authData.user.id;
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearerToken);
+        const resolvedUserId = authData?.user?.id;
+        if (authError || !resolvedUserId) {
+            return res.status(401).json({ error: "Invalid auth token" });
         }
 
-        if (!resolvedUserId) {
-            return res.status(401).json({ error: "Authenticated user is required to create an order" });
+        const checkoutSessionResponse = await supabaseAdmin
+            .from("checkout_sessions")
+            .select("id, user_id, status, amount_kobo, currency, payment_method, delivery_address, delivery_instructions, vendor_instructions, cart_snapshot, order_id, expires_at")
+            .eq("reference", reference)
+            .maybeSingle();
+
+        if (checkoutSessionResponse.error || !checkoutSessionResponse.data) {
+            return res.status(404).json({
+                error: "Checkout session not found",
+                details: checkoutSessionResponse.error?.message,
+            });
+        }
+
+        const checkoutSession = checkoutSessionResponse.data as Record<string, any>;
+        if (checkoutSession.user_id !== resolvedUserId) {
+            return res.status(403).json({ error: "Checkout session does not belong to user" });
+        }
+
+        if (checkoutSession.status === "paid" && checkoutSession.order_id) {
+            return res.status(200).json({
+                success: true,
+                orderId: checkoutSession.order_id,
+                reference,
+                idempotent: true,
+            });
+        }
+
+        if (checkoutSession.status !== "pending") {
+            return res.status(409).json({ error: `Checkout session is ${checkoutSession.status}` });
+        }
+
+        if (checkoutSession.expires_at && Date.parse(checkoutSession.expires_at) < Date.now()) {
+            await supabaseAdmin
+                .from("checkout_sessions")
+                .update({ status: "expired" })
+                .eq("id", checkoutSession.id)
+                .eq("status", "pending");
+            return res.status(410).json({ error: "Checkout session expired" });
         }
 
         const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
@@ -72,18 +90,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const verifiedData = verifyJson?.data;
         const verifiedStatus = verifiedData?.status;
         const paidAmountKobo = Number(verifiedData?.amount || 0);
-        const expectedAmountKobo = Math.round(totalAmount * 100);
+        const expectedAmountKobo = Number(checkoutSession.amount_kobo || 0);
 
         if (!verifyRes.ok || !verifyJson?.status || verifiedStatus !== "success") {
             return res.status(400).json({ error: "Payment verification failed" });
+        }
+
+        if (verifiedData?.currency && checkoutSession.currency && verifiedData.currency !== checkoutSession.currency) {
+            return res.status(400).json({ error: "Payment currency mismatch" });
         }
 
         if (paidAmountKobo !== expectedAmountKobo) {
             return res.status(400).json({ error: "Paid amount mismatch" });
         }
 
+        const existingOrder = await supabaseAdmin
+            .from("Orders")
+            .select("id")
+            .eq("payment_reference", reference)
+            .maybeSingle();
+
+        if (existingOrder.data?.id) {
+            await supabaseAdmin
+                .from("checkout_sessions")
+                .update({
+                    status: "paid",
+                    paid_at: new Date().toISOString(),
+                    order_id: existingOrder.data.id,
+                })
+                .eq("id", checkoutSession.id);
+
+            return res.status(200).json({
+                success: true,
+                orderId: existingOrder.data.id,
+                reference,
+                idempotent: true,
+            });
+        }
+
+        const safeItems = Array.isArray(checkoutSession.cart_snapshot)
+            ? checkoutSession.cart_snapshot
+            : [];
+
+        if (safeItems.length === 0) {
+            return res.status(500).json({ error: "Checkout cart snapshot is empty" });
+        }
+
+        const totalAmount = expectedAmountKobo / 100;
         const baseOrderPayload: Record<string, any> = {
-            payment_method: body.paymentMethod || "pay_online",
+            payment_method: checkoutSession.payment_method || "pay_online",
             payment_status: true,
             total_amount: totalAmount,
             delivery_status: "preparing",
@@ -93,11 +148,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ...baseOrderPayload,
             payment_reference: reference,
             user_id: resolvedUserId,
-            delivery_address: body.deliveryAddress ?? null,
-            delivery_instructions: body.deliveryInstructions ?? null,
-            vendor_instructions: body.vendorInstructions ?? null,
+            delivery_address: checkoutSession.delivery_address ?? null,
+            delivery_instructions: checkoutSession.delivery_instructions ?? null,
+            vendor_instructions: checkoutSession.vendor_instructions ?? null,
             order_notes: {
-                items: body.items ?? [],
+                items: safeItems,
             },
         };
 
@@ -121,15 +176,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const orderId = insertedOrder?.id;
-        const safeItems = Array.isArray(body.items) ? body.items : [];
 
         if (orderId && safeItems.length > 0) {
             const orderItemsPayload = safeItems.map((item) => ({
                 order_id: orderId,
                 item_name: item.name,
                 quantity: item.quantity || 1,
-                unit_price: Number(item.list_price || 0),
-                line_total: Number(item.subTotal || 0),
+                unit_price: Number(item.unitPrice || 0),
+                line_total: Number(item.lineTotal || 0),
                 product_ref: item.id,
             }));
 
@@ -145,6 +199,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
             }
         }
+
+        await supabaseAdmin
+            .from("checkout_sessions")
+            .update({
+                status: "paid",
+                paid_at: new Date().toISOString(),
+                order_id: orderId,
+            })
+            .eq("id", checkoutSession.id)
+            .eq("status", "pending");
 
         return res.status(200).json({
             success: true,

@@ -109,24 +109,62 @@ export default function CartPage() {
             return;
         }
 
-        const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-        if (!publicKey) {
-            toast.error('Missing Paystack public key');
-            return;
-        }
-
         const payerEmail = user?.email || `guest-${(user?.id || Date.now().toString()).slice(0, 8)}@satellitekitchen.ng`;
-        const reference = `sk_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
 
         try {
             setPlacingOrder(true);
+
+            const initRes = await fetch('/api/paystack/initiate-checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(session?.access_token
+                        ? { Authorization: `Bearer ${session.access_token}` }
+                        : {}),
+                },
+                body: JSON.stringify({
+                    paymentMethod,
+                    deliveryAddress: defaultAddressLine,
+                    deliveryInstructions,
+                    vendorInstructions,
+                    items: items.map((item) => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                    })),
+                }),
+            });
+
+            const initRaw = await initRes.text();
+            let initJson: any = {};
+            try {
+                initJson = initRaw ? JSON.parse(initRaw) : {};
+            } catch {
+                initJson = { error: 'Invalid response from checkout init endpoint' };
+            }
+
+            if (!initRes.ok || !initJson?.success) {
+                setPlacingOrder(false);
+                toast.error(initJson?.error || initJson?.details || 'Could not start checkout');
+                return;
+            }
+
+            const reference = String(initJson.reference || '').trim();
+            const amountKobo = Number(initJson.amountKobo || 0);
+            const publicKey = String(initJson.paystackPublicKey || '').trim();
+
+            if (!reference || !publicKey || !Number.isFinite(amountKobo) || amountKobo <= 0) {
+                setPlacingOrder(false);
+                toast.error('Invalid checkout session response');
+                return;
+            }
+
             const PaystackPop = (await import('@paystack/inline-js')).default;
             const popup = new PaystackPop();
 
             popup.newTransaction({
                 key: publicKey,
                 email: payerEmail,
-                amount: Math.round(totalPrice * 100),
+                amount: amountKobo,
                 currency: 'NGN',
                 ref: reference,
                 metadata: {
@@ -149,19 +187,6 @@ export default function CartPage() {
                         },
                         body: JSON.stringify({
                             reference: transaction?.reference || reference,
-                            totalAmount: totalPrice,
-                            paymentMethod: paymentMethod,
-                            deliveryAddress: defaultAddressLine,
-                            deliveryInstructions,
-                            vendorInstructions,
-                            userId: user?.id || null,
-                            items: items.map((item) => ({
-                                id: item.id,
-                                name: item.name,
-                                quantity: item.quantity,
-                                subTotal: item.subTotal,
-                                list_price: item.list_price,
-                            })),
                         }),
                     });
 
