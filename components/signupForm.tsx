@@ -129,12 +129,17 @@ export default function SignupForm() {
         const value = emailOrPhone.trim();
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+        const redirectTo =
+            typeof window !== "undefined"
+                ? `${window.location.origin}/auth/callback`
+                : undefined;
         const { error } = await supabase.auth.signInWithOtp(
             isEmail
                 ? {
                     email: value,
                     options: {
                         shouldCreateUser: true,
+                        emailRedirectTo: redirectTo,
                     },
                 }
                 : {
