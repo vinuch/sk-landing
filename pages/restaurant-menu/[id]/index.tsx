@@ -457,6 +457,30 @@ export default function MenuItem() {
     }
 
     const canAddToCart = areRequiredSelectionsComplete(quantities, categories);
+    const isOrderableBaseItem = menuItem?.category_name === "Soups";
+
+    if (menuItem && !isOrderableBaseItem) {
+        return (
+            <Layout>
+                <div className={`bg-primary ${leagueSpartan.className}`}>
+                    <div className="bg-white/60 p-12 md:p-24 min-h-screen">
+                        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md p-8 text-center">
+                            <h2 className="text-2xl md:text-3xl text-black mb-3">Not sold standalone</h2>
+                            <p className="text-gray-700 mb-6">
+                                This item is an add-on option. Please choose a soup first, then select your swallow and protein inside customization.
+                            </p>
+                            <Link
+                                href="/restaurant-menu"
+                                className="inline-block bg-primary text-white px-6 py-3 rounded-xl hover:opacity-90"
+                            >
+                                Back to Menu
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

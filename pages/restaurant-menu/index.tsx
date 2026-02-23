@@ -18,6 +18,8 @@ export type MenuItemsRow = {
   name: string;
 };
 
+const NON_ORDERABLE_CATEGORIES = new Set(["swallows", "Proteins"]);
+
 export const leagueSpartan = League_Spartan({
   weight: "700",
   style: "normal",
@@ -84,7 +86,15 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
                     ? Array(6)
                         .fill(0)
                         .map((_, idx) => <SkeletonCard key={idx} />)
-                    : filteredItems.map((item) => <MenuItemCard key={item.id} item={item} pixelEvent="Lead" />)}
+                    : filteredItems.map((item) => (
+                        <MenuItemCard
+                          key={item.id}
+                          item={item}
+                          pixelEvent="Lead"
+                          disabled={NON_ORDERABLE_CATEGORIES.has(item.category_name)}
+                          disabledLabel="Choose from soup options"
+                        />
+                      ))}
                 </div>
               </TabsContent>
             </Tabs>
