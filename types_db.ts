@@ -37,20 +37,35 @@ export type Database = {
         Row: {
           created_at: string
           id: number
+          item_name: string | null
+          line_total: number | null
           menu_item_id: number | null
           order_id: number | null
+          product_ref: string | null
+          quantity: number | null
+          unit_price: number | null
         }
         Insert: {
           created_at?: string
           id?: number
+          item_name?: string | null
+          line_total?: number | null
           menu_item_id?: number | null
           order_id?: number | null
+          product_ref?: string | null
+          quantity?: number | null
+          unit_price?: number | null
         }
         Update: {
           created_at?: string
           id?: number
+          item_name?: string | null
+          line_total?: number | null
           menu_item_id?: number | null
           order_id?: number | null
+          product_ref?: string | null
+          quantity?: number | null
+          unit_price?: number | null
         }
         Relationships: [
           {
@@ -72,24 +87,180 @@ export type Database = {
       Orders: {
         Row: {
           created_at: string
+          delivery_address: string | null
+          delivery_instructions: string | null
+          delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
           id: number
+          order_notes: Json | null
           payment_method: string | null
+          payment_reference: string | null
           payment_status: boolean | null
           total_amount: number | null
+          user_id: string | null
+          vendor_instructions: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_address?: string | null
+          delivery_instructions?: string | null
+          delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          id?: number
+          order_notes?: Json | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: boolean | null
+          total_amount?: number | null
+          user_id?: string | null
+          vendor_instructions?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_address?: string | null
+          delivery_instructions?: string | null
+          delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          id?: number
+          order_notes?: Json | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: boolean | null
+          total_amount?: number | null
+          user_id?: string | null
+          vendor_instructions?: string | null
+        }
+        Relationships: []
+      }
+      ContactInquiries: {
+        Row: {
+          created_at: string
+          id: number
+          inquiry_other: string | null
+          inquiry_type: string
+          message: string
+          name: string
+          phone: string
         }
         Insert: {
           created_at?: string
           id?: number
-          payment_method?: string | null
-          payment_status?: boolean | null
-          total_amount?: number | null
+          inquiry_other?: string | null
+          inquiry_type: string
+          message: string
+          name: string
+          phone: string
         }
         Update: {
           created_at?: string
           id?: number
+          inquiry_other?: string | null
+          inquiry_type?: string
+          message?: string
+          name?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      checkout_sessions: {
+        Row: {
+          amount_kobo: number
+          cart_snapshot: Json | null
+          created_at: string
+          currency: string | null
+          delivery_address: string | null
+          delivery_instructions: string | null
+          expires_at: string | null
+          id: number
+          order_id: number | null
+          paid_at: string | null
+          payment_method: string | null
+          reference: string
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_instructions: string | null
+        }
+        Insert: {
+          amount_kobo: number
+          cart_snapshot?: Json | null
+          created_at?: string
+          currency?: string | null
+          delivery_address?: string | null
+          delivery_instructions?: string | null
+          expires_at?: string | null
+          id?: number
+          order_id?: number | null
+          paid_at?: string | null
           payment_method?: string | null
-          payment_status?: boolean | null
-          total_amount?: number | null
+          reference: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_instructions?: string | null
+        }
+        Update: {
+          amount_kobo?: number
+          cart_snapshot?: Json | null
+          created_at?: string
+          currency?: string | null
+          delivery_address?: string | null
+          delivery_instructions?: string | null
+          expires_at?: string | null
+          id?: number
+          order_id?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          reference?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_instructions?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          full_name: string | null
+          id: string
+          onboarded: boolean | null
+          phone: string | null
+        }
+        Insert: {
+          full_name?: string | null
+          id: string
+          onboarded?: boolean | null
+          phone?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          id?: string
+          onboarded?: boolean | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      user_addresses: {
+        Row: {
+          address_line: string
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string | null
+          user_id: string
+        }
+        Insert: {
+          address_line: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          user_id: string
+        }
+        Update: {
+          address_line?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -101,6 +272,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      Delivery_status: "preparing" | "packaging" | "with_rider" | "delivered"
       Food_type: "soup" | "swallow" | "protein"
     }
     CompositeTypes: {

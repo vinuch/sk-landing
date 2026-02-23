@@ -59,6 +59,20 @@ type FeaturedMenuItem = {
   category_name?: string;
 };
 
+type ContactInquiryResponse = {
+  success?: boolean;
+  error?: string;
+};
+
+function parseJsonResponse<T>(raw: string, fallback: T): T {
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    return typeof parsed === "object" && parsed !== null ? (parsed as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function Home({ preview }: HomeProps) {
 
   const plugin = React.useRef(
@@ -198,12 +212,7 @@ export default function Home({ preview }: HomeProps) {
       });
 
       const raw = await response.text();
-      let json: any = {};
-      try {
-        json = raw ? JSON.parse(raw) : {};
-      } catch {
-        json = {};
-      }
+      const json = parseJsonResponse<ContactInquiryResponse>(raw, {});
 
       if (!response.ok || !json?.success) {
         setInquiryStatus({

@@ -56,10 +56,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const orders = ordersResponse.data || [];
-        const orderIds = orders.map((order: any) => order.id);
-        const userIds = [...new Set(orders.map((order: any) => order.user_id).filter(Boolean))];
+        const orderIds = orders.map((order) => order.id);
+        const userIds = [
+            ...new Set(
+                orders
+                    .map((order) => order.user_id)
+                    .filter((value): value is string => typeof value === "string" && value.length > 0)
+            ),
+        ];
 
-        let orderItems: any[] = [];
+        let orderItems: { id: number; order_id: number | null; item_name: string | null; quantity: number | null; unit_price: number | null; line_total: number | null; product_ref: string | null; }[] = [];
         if (orderIds.length > 0) {
             const itemsResponse = await supabaseAdmin
                 .from("OrderItems")
@@ -72,12 +78,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        let profiles: any[] = [];
+        let profiles: { id: string; full_name: string | null; phone: string | null }[] = [];
         if (userIds.length > 0) {
             const profilesResponse = await supabaseAdmin
                 .from("profiles")
                 .select("id, full_name, phone")
-                .in("id", userIds as string[]);
+                .in("id", userIds);
 
             if (!profilesResponse.error && profilesResponse.data) {
                 profiles = profilesResponse.data;
@@ -90,10 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             orderItems,
             profiles,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return res.status(500).json({
             error: "Server error",
-            details: error?.message || "Unknown error",
+            details: error instanceof Error ? error.message : "Unknown error",
         });
     }
 }

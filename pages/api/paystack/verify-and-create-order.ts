@@ -1,9 +1,45 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import type { TablesInsert } from "@/types_db";
 
 type VerifyAndCreateBody = {
     reference?: string;
 };
+
+type VerifiedTransactionData = {
+    status?: string;
+    amount?: number;
+    currency?: string;
+};
+
+type VerifiedResponse = {
+    status?: boolean;
+    data?: VerifiedTransactionData;
+};
+
+type OrderInsertResult = {
+    id: number;
+};
+
+type SnapshotItem = {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+};
+
+function isSnapshotItem(value: unknown): value is SnapshotItem {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as Record<string, unknown>;
+    return (
+        typeof candidate.id === "string" &&
+        typeof candidate.name === "string" &&
+        typeof candidate.quantity === "number" &&
+        typeof candidate.unitPrice === "number" &&
+        typeof candidate.lineTotal === "number"
+    );
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
@@ -52,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        const checkoutSession = checkoutSessionResponse.data as Record<string, any>;
+        const checkoutSession = checkoutSessionResponse.data;
         if (checkoutSession.user_id !== resolvedUserId) {
             return res.status(403).json({ error: "Checkout session does not belong to user" });
         }
@@ -86,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         });
 
-        const verifyJson = await verifyRes.json();
+        const verifyJson = (await verifyRes.json()) as VerifiedResponse;
         const verifiedData = verifyJson?.data;
         const verifiedStatus = verifiedData?.status;
         const paidAmountKobo = Number(verifiedData?.amount || 0);
@@ -129,7 +165,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const safeItems = Array.isArray(checkoutSession.cart_snapshot)
-            ? checkoutSession.cart_snapshot
+            ? checkoutSession.cart_snapshot.filter(isSnapshotItem)
             : [];
 
         if (safeItems.length === 0) {
@@ -137,14 +173,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const totalAmount = expectedAmountKobo / 100;
-        const baseOrderPayload: Record<string, any> = {
+        const baseOrderPayload: TablesInsert<"Orders"> = {
             payment_method: checkoutSession.payment_method || "pay_online",
             payment_status: true,
             total_amount: totalAmount,
             delivery_status: "preparing",
         };
 
-        const enrichedPayload: Record<string, any> = {
+        const enrichedPayload: TablesInsert<"Orders"> = {
             ...baseOrderPayload,
             payment_reference: reference,
             user_id: resolvedUserId,
@@ -156,7 +192,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         };
 
-        let insertedOrder: any = null;
+        let insertedOrder: OrderInsertResult | null = null;
 
         // Try enriched insert first (for upgraded Orders schema).
         const enrichedInsert = await supabaseAdmin
@@ -243,10 +279,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             orderId,
             reference,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return res.status(500).json({
             error: "Server error",
-            details: error?.message || "Unknown error",
+            details: error instanceof Error ? error.message : "Unknown error",
         });
     }
 }

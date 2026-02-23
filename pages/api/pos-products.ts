@@ -1,14 +1,51 @@
 // app/api/pos-products/route.ts
 import { NextApiRequest, NextApiResponse } from "next";
-import { NextResponse } from "next/server";
 
 const ODOO_URL = process.env.ODOO_URL!;
 const DB = process.env.ODOO_DB!;
 const USERNAME = process.env.ODOO_USER!;
 const PASSWORD = process.env.ODOO_PASSWORD!;
 
+type OdooRPCResponse<T> = {
+  result: T;
+};
+
+type OdooProduct = {
+  id: number;
+  name: string;
+  list_price: number;
+  default_code?: string | null;
+  product_tmpl_id?: [number, string] | null;
+};
+
+type OdooTemplate = {
+  id: number;
+  categ_id?: [number, string] | null;
+};
+
+type ProductWithCategory = OdooProduct & {
+  category_id: number | null;
+  category_name: string | null;
+};
+
+function isOdooProduct(value: unknown): value is OdooProduct {
+  if (!value || typeof value !== "object") return false;
+  const product = value as Record<string, unknown>;
+  return (
+    typeof product.id === "number" &&
+    typeof product.name === "string" &&
+    typeof product.list_price === "number"
+  );
+}
+
+function isOdooTemplate(value: unknown): value is OdooTemplate {
+  if (!value || typeof value !== "object") return false;
+  const template = value as Record<string, unknown>;
+  return typeof template.id === "number";
+}
+
 // Helper function for JSON-RPC calls
-async function odooRPC(service: string, method: string, args: any[]) {
+async function odooRPC<T>(service: string, method: string, args: unknown[]) {
   const response = await fetch(ODOO_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -19,10 +56,10 @@ async function odooRPC(service: string, method: string, args: any[]) {
       id: Math.floor(Math.random() * 1000),
     }),
   });
-  return response.json();
+  return (await response.json()) as OdooRPCResponse<T>;
 }
 
-let menuCache: any = null;
+let menuCache: ProductWithCategory[] | null = null;
 let lastFetch = 0;
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
@@ -35,7 +72,7 @@ export default async function handler(
     console.log(id, 'no id', req.query)
 
     // 1️⃣ Authenticate API user
-    const auth = await odooRPC("common", "authenticate", [
+    const auth = await odooRPC<number | null>("common", "authenticate", [
       DB,
       USERNAME,
       PASSWORD,
@@ -50,7 +87,7 @@ export default async function handler(
     // ✅ If ID is provided → fetch single product
     if (id) {
 
-      const productResponse = await odooRPC("object", "execute_kw", [
+      const productResponse = await odooRPC<unknown[]>("object", "execute_kw", [
         DB,
         uid,
         PASSWORD,
@@ -68,7 +105,7 @@ export default async function handler(
         },
       ]);
 
-      const product = productResponse.result?.[0];
+      const product = productResponse.result.find(isOdooProduct);
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
@@ -79,7 +116,7 @@ export default async function handler(
       let category_name = null;
 
       if (templateId) {
-        const templateResponse = await odooRPC("object", "execute_kw", [
+        const templateResponse = await odooRPC<unknown[]>("object", "execute_kw", [
           DB,
           uid,
           PASSWORD,
@@ -89,7 +126,7 @@ export default async function handler(
           { fields: ["id", "categ_id"] },
         ]);
 
-        const template = templateResponse.result?.[0];
+        const template = templateResponse.result.find(isOdooTemplate);
         if (template?.categ_id) {
           [category_id, category_name] = template.categ_id;
         }
@@ -112,7 +149,7 @@ export default async function handler(
     }
 
     // ✅ Otherwise → fetch all available POS products
-    const products = await odooRPC("object", "execute_kw", [
+    const products = await odooRPC<unknown[]>("object", "execute_kw", [
       DB,
       uid,
       PASSWORD,
@@ -125,11 +162,16 @@ export default async function handler(
       },
     ]);
 
+    const productRows = products.result.filter(isOdooProduct);
     const templateIds = [
-      ...new Set(products.result.map((p: any) => p.product_tmpl_id[0])),
+      ...new Set(
+        productRows
+          .map((product) => product.product_tmpl_id?.[0])
+          .filter((templateId): templateId is number => typeof templateId === "number")
+      ),
     ];
 
-    const templates = await odooRPC("object", "execute_kw", [
+    const templates = await odooRPC<unknown[]>("object", "execute_kw", [
       DB,
       uid,
       PASSWORD,
@@ -139,20 +181,22 @@ export default async function handler(
       { fields: ["id", "categ_id"] },
     ]);
 
+    const templateRows = templates.result.filter(isOdooTemplate);
     const categoryMap = Object.fromEntries(
-      templates.result.map((t: any) => [
-        t.id,
-        t.categ_id || [null, null],
+      templateRows.map((template) => [
+        template.id,
+        template.categ_id || [null, null],
       ])
-    );
+    ) as Record<number, [number | null, string | null]>;
 
-    const productsWithCategory = products.result.map((p: any) => {
-      const [catId, catName] = categoryMap[p.product_tmpl_id[0]] || [
+    const productsWithCategory = productRows.map((product) => {
+      const templateId = product.product_tmpl_id?.[0];
+      const [catId, catName] = (typeof templateId === "number" ? categoryMap[templateId] : null) || [
         null,
         null,
       ];
       return {
-        ...p,
+        ...product,
         category_id: catId,
         category_name: catName,
       };
@@ -162,8 +206,8 @@ export default async function handler(
     lastFetch = Date.now();
 
     return res.status(200).json(productsWithCategory);
-  } catch (err: any) {
-    console.error("Error fetching products:", err);
+  } catch (error: unknown) {
+    console.error("Error fetching products:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }

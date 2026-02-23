@@ -24,6 +24,24 @@ export type Selections = {
     extraProtein: SelectionItem[]
 }
 
+type ProductOption = {
+    category_name: string
+    name: string
+    list_price: number
+}
+
+type CategoryOption = {
+    name: string
+    price: number
+}
+
+type CategoryConfig = {
+    title: string;
+    required: boolean;
+    max: number;
+    options: CategoryOption[];
+}
+
 
 
 
@@ -235,15 +253,15 @@ export default function MenuItem() {
     const setData = useMenuStore((state) => state.setData)
 
 
-    const categoryMap: Record<string, any[]> = {}
+    const categoryMap: Record<string, CategoryOption[]> = {}
 
-    data?.forEach((item) => {
+    data?.forEach((item: ProductOption) => {
         const cat = item.category_name
         if (!categoryMap[cat]) categoryMap[cat] = []
         categoryMap[cat].push({ name: item.name.trim(), price: item.list_price })
     })
 
-    const categories = [
+    const categories: CategoryConfig[] = [
         {
             title: "Main Protein",
             required: true,
@@ -405,7 +423,7 @@ export default function MenuItem() {
         basePrice: number,
         selections: Selections
     ) {
-        let subtotal = basePrice;
+        const subtotal = basePrice;
 
         // Flatten all selection groups into a single array
         const allSelections = [
@@ -421,7 +439,7 @@ export default function MenuItem() {
         }
 
         // subtotal = subtotal + extrasTotal
-        let sub = subtotal + extrasTotal;
+        const sub = subtotal + extrasTotal;
         setSubtotal(sub);
     }
 
@@ -432,12 +450,7 @@ export default function MenuItem() {
 
     function areRequiredSelectionsComplete(
         quantities: Record<string, number>,
-        categories: {
-            title: string;
-            required: boolean;
-            max: number;
-            options: any[];
-        }[]
+        categories: CategoryConfig[]
     ): boolean {
         for (const category of categories) {
             if (!category.required) continue; // skip non-required ones

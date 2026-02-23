@@ -13,6 +13,30 @@ import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
 
+type CheckoutInitResponse = {
+    success?: boolean;
+    error?: string;
+    details?: string;
+    reference?: string;
+    amountKobo?: number;
+    paystackPublicKey?: string;
+};
+
+type CheckoutVerifyResponse = {
+    success?: boolean;
+    error?: string;
+    details?: string;
+};
+
+function parseJsonResponse<T>(raw: string, fallback: T): T {
+    try {
+        const parsed: unknown = raw ? JSON.parse(raw) : {};
+        return typeof parsed === "object" && parsed !== null ? (parsed as T) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 
 export default function CartPage() {
     const router = useRouter();
@@ -144,12 +168,9 @@ export default function CartPage() {
             });
 
             const initRaw = await initRes.text();
-            let initJson: any = {};
-            try {
-                initJson = initRaw ? JSON.parse(initRaw) : {};
-            } catch {
-                initJson = { error: 'Invalid response from checkout init endpoint' };
-            }
+            const initJson = parseJsonResponse<CheckoutInitResponse>(initRaw, {
+                error: "Invalid response from checkout init endpoint",
+            });
 
             if (!initRes.ok || !initJson?.success) {
                 setPlacingOrder(false);
@@ -208,14 +229,15 @@ export default function CartPage() {
                     });
 
                     const raw = await verifyRes.text();
-                    let verifyJson: any = null;
-                    try {
-                        verifyJson = raw ? JSON.parse(raw) : {};
-                    } catch {
-                        verifyJson = {
+                    const verifyJson = parseJsonResponse<CheckoutVerifyResponse>(raw, {
+                        error: 'Non-JSON response from order API',
+                        details: raw?.slice(0, 300),
+                    });
+                    if (!raw) {
+                        Object.assign(verifyJson, {
                             error: 'Non-JSON response from order API',
                             details: raw?.slice(0, 300),
-                        };
+                        });
                     }
                     setPlacingOrder(false);
 
@@ -242,9 +264,9 @@ export default function CartPage() {
                     toast.error('Payment cancelled');
                 },
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             setPlacingOrder(false);
-            toast.error(error?.message || 'Could not start payment');
+            toast.error(error instanceof Error ? error.message : 'Could not start payment');
         }
     };
 

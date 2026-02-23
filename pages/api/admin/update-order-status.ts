@@ -97,10 +97,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             previousStatus: currentStatus,
             deliveryStatus: newStatus,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return res.status(500).json({
             error: "Server error",
-            details: error?.message || "Unknown error",
+            details: error instanceof Error ? error.message : "Unknown error",
         });
     }
 }

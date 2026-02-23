@@ -96,10 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             expiresAt: checkoutInsert.data.expires_at,
             paystackPublicKey,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return res.status(500).json({
             error: "Could not prepare checkout",
-            details: error?.message || "Unknown error",
+            details: error instanceof Error ? error.message : "Unknown error",
         });
     }
 }

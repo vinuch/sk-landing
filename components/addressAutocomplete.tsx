@@ -11,9 +11,34 @@ type AddressAutocompleteProps = {
     onInputChange?: (address: string) => void;
 };
 
+type PlacePrediction = {
+    place_id: string;
+    description: string;
+};
+
+type PlacesServiceStatus = {
+    OK: string;
+};
+
+type AutocompleteServiceLike = {
+    getPlacePredictions: (
+        request: { input: string; componentRestrictions?: { country: string } },
+        callback: (predictions: PlacePrediction[] | null, status: string) => void
+    ) => void;
+};
+
+type GoogleMapsLike = {
+    maps?: {
+        places?: {
+            AutocompleteService: new () => AutocompleteServiceLike;
+            PlacesServiceStatus: PlacesServiceStatus;
+        };
+    };
+};
+
 declare global {
     interface Window {
-        google?: any;
+        google?: GoogleMapsLike;
     }
 }
 
@@ -25,10 +50,10 @@ export default function AddressAutocomplete({
     onInputChange,
 }: AddressAutocompleteProps) {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
-    const serviceRef = useRef<any>(null);
+    const serviceRef = useRef<AutocompleteServiceLike | null>(null);
     const [scriptReady, setScriptReady] = useState(false);
     const [inputValue, setInputValue] = useState(value);
-    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -69,14 +94,14 @@ export default function AddressAutocomplete({
 
         setLoading(true);
         const handle = setTimeout(() => {
-            serviceRef.current.getPlacePredictions(
+            serviceRef.current?.getPlacePredictions(
                 {
                     input: inputValue.trim(),
                     componentRestrictions: { country: "ng" },
                 },
-                (predictions: any[] | null, status: string) => {
+                (predictions: PlacePrediction[] | null, status: string) => {
                     setLoading(false);
-                    if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
+                    if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
                         setSuggestions([]);
                         return;
                     }
@@ -156,7 +181,7 @@ export default function AddressAutocomplete({
                         className="w-full text-left px-3 py-2 text-sm text-gray-900 bg-white hover:bg-gray-100 whitespace-normal break-words leading-5"
                         onClick={() => selectSuggestion(inputValue.trim())}
                     >
-                        Use "{inputValue.trim()}"
+                        Use &quot;{inputValue.trim()}&quot;
                     </button>
                 </div>
             ) : null}

@@ -35,6 +35,24 @@ type ProfileRow = {
     phone?: string | null;
 };
 
+type AdminOrdersResponse = {
+    success?: boolean;
+    error?: string;
+    orders?: OrderRow[];
+    orderItems?: OrderItemRow[];
+    profiles?: ProfileRow[];
+    deliveryStatus?: DeliveryStatus;
+};
+
+function parseJsonResponse<T>(raw: string, fallback: T): T {
+    try {
+        const parsed: unknown = raw ? JSON.parse(raw) : {};
+        return typeof parsed === "object" && parsed !== null ? (parsed as T) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 const statuses: DeliveryStatus[] = ['preparing', 'packaging', 'with_rider', 'delivered'];
 
 const statusLabel: Record<DeliveryStatus, string> = {
@@ -94,12 +112,7 @@ export default function AdminOrdersPage() {
         });
 
         const text = await res.text();
-        let json: any = {};
-        try {
-            json = text ? JSON.parse(text) : {};
-        } catch {
-            json = { error: 'Invalid response from server' };
-        }
+        const json = parseJsonResponse<AdminOrdersResponse>(text, { error: "Invalid response from server" });
 
         setLoading(false);
 
@@ -140,12 +153,7 @@ export default function AdminOrdersPage() {
         });
 
         const text = await res.text();
-        let json: any = {};
-        try {
-            json = text ? JSON.parse(text) : {};
-        } catch {
-            json = { error: 'Invalid response from server' };
-        }
+        const json = parseJsonResponse<AdminOrdersResponse>(text, { error: "Invalid response from server" });
 
         setUpdatingOrderId(null);
 
