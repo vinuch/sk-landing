@@ -176,9 +176,9 @@ export default function VerifyOrdersPage() {
 
     return (
         <Layout>
-            <div className={`bg-primary min-h-screen p-6 md:p-12 ${leagueSpartan.className}`}>
-                <div className="absolute bg-white/60 h-full w-screen top -mt-12 z-10 left-0"></div>
-                <div className="relative z-20 max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-10">
+            <div className={`bg-primary min-h-screen ${leagueSpartan.className}`}>
+                <div className="bg-white/60 p-6 md:p-12">
+                    <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-10">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                         <h2 className="text-black text-3xl md:text-4xl">Verify Bank Transfers</h2>
                         {authed ? (
