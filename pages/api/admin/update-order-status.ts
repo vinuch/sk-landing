@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const { data: order, error: orderError } = await supabaseAdmin
             .from("Orders")
-            .select("id, delivery_status, payment_status, payment_method, bank_receipt_url")
+            .select("id, delivery_status, delivery_tracking, payment_status, payment_method, bank_receipt_url")
             .eq("id", orderId)
             .single();
 
@@ -81,9 +81,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: "Order not found" });
         }
 
-        // Use the delivery_status directly from database
-        const currentStatus = order.delivery_status || "pending";
-        let newStatus: DeliveryStatus;
+        // Use the delivery_tracking column (text-based, more flexible)
+        const currentStatus = (order as any).delivery_tracking || order.delivery_status || "pending";
+        let newStatus: string;
 
         if (action === "set") {
             const requested = body.status;
@@ -94,15 +94,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
             newStatus = requested;
         } else if (action === "previous") {
-            newStatus = getPreviousStatus(currentStatus);
+            newStatus = getPreviousStatus(currentStatus as DeliveryStatus);
         } else {
-            newStatus = getNextStatus(currentStatus);
+            newStatus = getNextStatus(currentStatus as DeliveryStatus);
         }
 
         const { error: updateError } = await supabaseAdmin
             .from("Orders")
             .update({ 
-                delivery_status: newStatus
+                delivery_tracking: newStatus
             })
             .eq("id", orderId);
 
@@ -118,6 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             orderId,
             previousStatus: currentStatus,
             deliveryStatus: newStatus,
+            deliveryTracking: newStatus,
         });
     } catch (error: unknown) {
         return res.status(500).json({
