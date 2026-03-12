@@ -92,6 +92,7 @@ export default function AddressAutocomplete({
         }
 
         setLoading(true);
+        console.log('Searching for:', inputValue.trim());
         const handle = setTimeout(() => {
             serviceRef.current?.getPlacePredictions(
                 {
@@ -100,7 +101,9 @@ export default function AddressAutocomplete({
                 },
                 (predictions: PlacePrediction[] | null, status: string) => {
                     setLoading(false);
+                    console.log('Predictions status:', status, 'Results:', predictions?.length || 0);
                     if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
+                        console.log('Search failed or no results');
                         setSuggestions([]);
                         return;
                     }
@@ -133,7 +136,7 @@ export default function AddressAutocomplete({
         <div className={`relative ${className}`} ref={wrapperRef}>
             {/* Debug: Show API status */}
             <div className="text-[10px] text-gray-500 mb-1">
-                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'}
+                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length}
             </div>
             
             {apiKey ? (
