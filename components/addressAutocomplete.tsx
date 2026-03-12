@@ -141,7 +141,7 @@ export default function AddressAutocomplete({
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
             {/* Debug info - remove after testing */}
-            <div className="text-[10px] text-gray-500 mb-1 font-mono">{debugInfo}</div>
+            <div className="text-xs text-blue-600 mb-2 font-mono bg-blue-50 p-2 rounded">{debugInfo || 'Loading...'}</div>
             {apiKey ? (
                 <Script
                     src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`}
