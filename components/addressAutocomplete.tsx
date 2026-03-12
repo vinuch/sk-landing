@@ -143,7 +143,13 @@ export default function AddressAutocomplete({
                 type="text"
                 value={inputValue}
                 disabled={disabled}
-                onFocus={() => setOpen(suggestions.length > 0)}
+                onFocus={(e) => {
+                    setOpen(suggestions.length > 0);
+                    // Scroll input into view on mobile when keyboard opens
+                    setTimeout(() => {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }}
                 onChange={(e) => {
                     setInputValue(e.target.value);
                     onInputChange?.(e.target.value);
