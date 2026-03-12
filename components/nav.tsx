@@ -161,6 +161,16 @@ export default function Nav() {
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                             {/* <li className="my-8">About Us</li> */}
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/find-us">Find Us</Link></li>
+                            <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}>
+                                <Link href="/cart">
+                                    Cart
+                                    {totalItems > 0 && (
+                                        <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                            {totalItems}
+                                        </span>
+                                    )}
+                                </Link>
+                            </li>
                             <li className="my-8" onClick={() => setMenuOpen(false)}><a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-primary-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a></li>
                             {!loading && (
                                 <li className="my-8">
