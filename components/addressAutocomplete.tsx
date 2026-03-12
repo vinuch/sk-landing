@@ -178,27 +178,31 @@ export default function AddressAutocomplete({
             />
             {helperText ? <p className="text-xs text-gray-500 mt-1">{helperText}</p> : null}
             {open && suggestions.length > 0 ? (
-                <div className="absolute mt-1 w-full max-h-60 overflow-y-auto overflow-x-hidden rounded-md border bg-white shadow-lg z-50">
-                    {suggestions.map((item) => (
-                        <button
-                            key={item.place_id}
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-sm text-gray-900 bg-white hover:bg-gray-100 whitespace-normal break-words leading-5"
-                            onClick={() => selectSuggestion(item.description)}
-                        >
-                            {item.description}
-                        </button>
-                    ))}
+                <div className="relative mt-1 w-full">
+                    <div className="max-h-60 overflow-y-auto overflow-x-hidden rounded-md border bg-white shadow-lg">
+                        {suggestions.map((item) => (
+                            <button
+                                key={item.place_id}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-900 bg-white hover:bg-gray-100 whitespace-normal break-words leading-5"
+                                onClick={() => selectSuggestion(item.description)}
+                            >
+                                {item.description}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             ) : open && inputValue.trim().length >= 3 && !loading ? (
-                <div className="absolute mt-1 w-full rounded-md border bg-white shadow-lg z-50">
-                    <button
-                        type="button"
-                        className="w-full text-left px-3 py-2 text-sm text-gray-900 bg-white hover:bg-gray-100 whitespace-normal break-words leading-5"
-                        onClick={() => selectSuggestion(inputValue.trim())}
-                    >
-                        Use &quot;{inputValue.trim()}&quot;
-                    </button>
+                <div className="relative mt-1 w-full">
+                    <div className="rounded-md border bg-white shadow-lg">
+                        <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm text-gray-900 bg-white hover:bg-gray-100 whitespace-normal break-words leading-5"
+                            onClick={() => selectSuggestion(inputValue.trim())}
+                        >
+                            Use &quot;{inputValue.trim()}&quot;
+                        </button>
+                    </div>
                 </div>
             ) : null}
         </div>
