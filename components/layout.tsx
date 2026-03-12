@@ -2,9 +2,10 @@ import Script from 'next/script';
 import Footer from "./footer";
 import Nav from "./nav";
 import Image from 'next/image';
+import { Toaster } from './ui/sonner';
 
 type LayoutProps = {
-    preview: boolean;
+    preview?: boolean;
     children: React.ReactNode;
 };
 
@@ -34,7 +35,11 @@ export default function Layout({ children }: LayoutProps) {
             </noscript>
             <Nav />
             <div className="min-h-screen">
+
+
+
                 <main>{children}</main>
+                <Toaster position='top-center' className='bg-black' />
             </div>
             <Footer />
 
