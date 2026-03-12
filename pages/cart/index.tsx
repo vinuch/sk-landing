@@ -229,6 +229,7 @@ export default function CartPage() {
         }
 
         try {
+            console.log('Submitting confirm-transfer with orderId:', bankTransferOrderId, 'receiptUrl:', receiptUrl);
             const res = await fetch('/api/orders/confirm-transfer', {
                 method: 'POST',
                 headers: {
@@ -314,6 +315,7 @@ export default function CartPage() {
                     return;
                 }
 
+                console.log('Order created with ID:', json.orderId);
                 setBankTransferOrderId(json.orderId || null);
                 setShowBankDetails(true);
                 setPlacingOrder(false);
