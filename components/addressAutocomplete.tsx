@@ -59,6 +59,11 @@ export default function AddressAutocomplete({
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const canSearch = Boolean(scriptReady && window.google?.maps?.places && inputValue.trim().length >= 3);
+    
+    // Debug logging
+    useEffect(() => {
+        console.log('AddressAutocomplete debug:', { apiKey: !!apiKey, scriptReady, canSearch, suggestionsCount: suggestions.length, open });
+    }, [apiKey, scriptReady, canSearch, suggestions.length, open]);
 
     useEffect(() => {
         setInputValue(value);
