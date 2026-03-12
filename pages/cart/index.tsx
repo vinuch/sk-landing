@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
+import '@/lib/distance';
 
 type BankAccount = {
     id: number;
@@ -78,6 +79,14 @@ export default function CartPage() {
     const [receiptUploading, setReceiptUploading] = useState(false);
     const [bankTransferOrderId, setBankTransferOrderId] = useState<number | null>(null);
     const [showBankDetails, setShowBankDetails] = useState(false);
+
+    // Distance check states
+    const [distanceCheck, setDistanceCheck] = useState<{
+        distance: number;
+        isWithinRadius: boolean;
+    } | null>(null);
+    const [checkingDistance, setCheckingDistance] = useState(false);
+    const [distanceError, setDistanceError] = useState<string | null>(null);
 
     const totalPrice = items.reduce(
         (acc, item) => acc + (item.subTotal ?? item.subTotal) * item.quantity,
@@ -158,6 +167,8 @@ export default function CartPage() {
 
     const handleAddressSelect = async (address: string) => {
         setSavingAddress(true);
+        setDistanceError(null);
+        setDistanceCheck(null);
         const result = await saveDefaultAddress(address);
         setSavingAddress(false);
 
@@ -168,12 +179,60 @@ export default function CartPage() {
 
         toast.success('Delivery address updated');
         setEditingAddress(false);
+        
+        // Check distance to store
+        await checkAddressDistance(address);
     };
+
+    const checkAddressDistance = async (address: string) => {
+        if (!address.trim()) return;
+        
+        setCheckingDistance(true);
+        setDistanceError(null);
+        
+        try {
+            const res = await fetch('/api/distance-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address: address.trim() }),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                setDistanceError(json.error || 'Could not verify delivery location');
+                setCheckingDistance(false);
+                return;
+            }
+
+            setDistanceCheck({
+                distance: json.distance,
+                isWithinRadius: json.isWithinRadius,
+            });
+
+            if (!json.isWithinRadius) {
+                toast.error(`We don't deliver here yet. Coming soon! (${json.distance} km from store)`);
+            }
+        } catch {
+            setDistanceError('Could not verify delivery location');
+        } finally {
+            setCheckingDistance(false);
+        }
+    };
+
+    // Check distance when default address is loaded
+    useEffect(() => {
+        if (defaultAddressLine && !distanceCheck && !checkingDistance) {
+            checkAddressDistance(defaultAddressLine);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [defaultAddressLine]);
 
     const missingLogin = !user?.id;
     const missingPayment = !paymentMethod;
     const missingAddress = !defaultAddressLine;
-    const canCheckout = !missingLogin && !missingPayment && !missingAddress;
+    const outsideDeliveryRadius = distanceCheck !== null && !distanceCheck.isWithinRadius;
+    const canCheckout = !missingLogin && !missingPayment && !missingAddress && !outsideDeliveryRadius && !checkingDistance;
 
     const handleReceiptUpload = async (): Promise<string | null> => {
         if (!receiptFile) return null;
@@ -767,12 +826,34 @@ export default function CartPage() {
                                 </div>
 
 
+                                {/* Distance check status */}
+                                {checkingDistance && (
+                                    <p className="text-sm text-blue-600 mb-3">
+                                        Checking delivery location...
+                                    </p>
+                                )}
+                                {distanceCheck && distanceCheck.isWithinRadius && (
+                                    <p className="text-sm text-green-600 mb-3">
+                                        ✅ {distanceCheck.distance} km from store — We deliver here!
+                                    </p>
+                                )}
+                                {outsideDeliveryRadius && (
+                                    <p className="text-sm text-red-600 mb-3">
+                                        ❌ We don&apos;t deliver here yet. Coming soon! ({distanceCheck?.distance} km from store, max 50 km)
+                                    </p>
+                                )}
+                                {distanceError && !outsideDeliveryRadius && (
+                                    <p className="text-sm text-red-600 mb-3">
+                                        {distanceError}
+                                    </p>
+                                )}
+
                                 {/* 🧹 Actions */}
                                 {!canCheckout && (
                                     <p className="text-sm text-red-600 mb-3">
                                         {missingLogin && 'Login required. '}
                                         {missingPayment && 'Choose payment method. '}
-                                        {missingAddress && 'Choose delivery address.'}
+                                        {missingAddress && 'Choose delivery address. '}
                                     </p>
                                 )}
                                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
