@@ -81,7 +81,7 @@ export default function Nav() {
                     </div>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"} z-50`}>
+            <PopoverContent align="end" portalled={!compact} className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"} z-50`}>
                 <p className="text-sm font-medium mb-2">Choose delivery location</p>
                 <AddressAutocomplete
                     value={defaultAddressLine}
@@ -156,7 +156,8 @@ export default function Nav() {
             {
                 menuOpen ? (
                     <div className="fixed top-16 left-0 lg:hidden h-screen w-screen bg-white z-30 text-black flex justify-center">
-                        <ul className="flex-co gap-6 text-center mt-12">
+                        <div id="mobile-menu-portal" className="absolute inset-0 pointer-events-none" />
+                        <ul className="flex-co gap-6 text-center mt-12 relative z-10">
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/">Home</Link></li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                             {/* <li className="my-8">About Us</li> */}
