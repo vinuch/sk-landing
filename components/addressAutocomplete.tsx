@@ -131,14 +131,26 @@ export default function AddressAutocomplete({
 
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
-
+            {/* Debug: Show API status */}
+            <div className="text-[10px] text-gray-500 mb-1">
+                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'}
+            </div>
+            
             {apiKey ? (
                 <Script
                     src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`}
                     strategy="afterInteractive"
-                    onLoad={() => setScriptReady(true)}
+                    onLoad={() => {
+                        console.log('Google Maps script loaded');
+                        setScriptReady(true);
+                    }}
+                    onError={(e) => {
+                        console.error('Google Maps script error:', e);
+                    }}
                 />
-            ) : null}
+            ) : (
+                <div className="text-red-500 text-xs">API Key missing</div>
+            )}
             <input
                 type="text"
                 value={inputValue}
