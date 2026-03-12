@@ -56,6 +56,7 @@ export default function AddressAutocomplete({
     const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [searchStatus, setSearchStatus] = useState<string>('');
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const canSearch = Boolean(scriptReady && window.google?.maps?.places && inputValue.trim().length >= 3);
 
@@ -97,10 +98,11 @@ export default function AddressAutocomplete({
             serviceRef.current?.getPlacePredictions(
                 {
                     input: inputValue.trim(),
-                    componentRestrictions: { country: "ng" },
+                    // componentRestrictions: { country: "ng" },
                 },
                 (predictions: PlacePrediction[] | null, status: string) => {
                     setLoading(false);
+                    setSearchStatus(status);
                     console.log('Predictions status:', status, 'Results:', predictions?.length || 0);
                     if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
                         console.log('Search failed or no results');
@@ -136,7 +138,7 @@ export default function AddressAutocomplete({
         <div className={`relative ${className}`} ref={wrapperRef}>
             {/* Debug: Show API status */}
             <div className="text-[10px] text-gray-500 mb-1">
-                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length}
+                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length} | Status: {searchStatus}
             </div>
             
             {apiKey ? (
