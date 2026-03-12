@@ -34,9 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: "Invalid auth token" });
     }
 
-    const { id } = req.query;
-    const orderId = Number(id);
-    const body = req.body as ConfirmTransferBody;
+    const body = req.body as ConfirmTransferBody & { orderId?: number };
+    const orderId = Number(body.orderId);
     const receiptUrl = body.receiptUrl?.trim();
 
     if (!Number.isFinite(orderId) || orderId <= 0) {
