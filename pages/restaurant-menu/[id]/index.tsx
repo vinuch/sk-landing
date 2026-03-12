@@ -321,8 +321,7 @@ export default function MenuItem() {
         };
 
         fetchMenuItems();
-
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const toggleAccordion = (title: string) =>
