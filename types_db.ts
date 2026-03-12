@@ -93,6 +93,7 @@ export type Database = {
           delivery_address: string | null
           delivery_instructions: string | null
           delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking: string | null
           id: number
           order_notes: Json | null
           paid_at: string | null
@@ -111,6 +112,7 @@ export type Database = {
           delivery_address?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking?: string | null
           id?: number
           order_notes?: Json | null
           paid_at?: string | null
@@ -129,6 +131,7 @@ export type Database = {
           delivery_address?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking?: string | null
           id?: number
           order_notes?: Json | null
           paid_at?: string | null
@@ -314,7 +317,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      Delivery_status: "preparing" | "packaging" | "with_rider" | "delivered"
+      Delivery_status: "pending" | "awaiting_confirmation" | "confirmed" | "preparing" | "ready" | "rider_arrived" | "rider_left" | "delivered"
       Food_type: "soup" | "swallow" | "protein"
     }
     CompositeTypes: {

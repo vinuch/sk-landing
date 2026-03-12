@@ -151,6 +151,19 @@ export default function Nav() {
                     )}
                 </li>
             </ul>
+            {/* Mobile Location Picker - outside drawer for testing */}
+            {!loading && user && hasOnboarded && (
+                <div className="lg:hidden flex-1 mx-2 max-w-[200px]">
+                    <div className="text-left">
+                        <p className="text-[10px] text-gray-500">Delivery Location</p>
+                        <AddressAutocomplete
+                            value={defaultAddressLine}
+                            disabled={profileLoading || savingAddress}
+                            onAddressSelect={handleAddressSelect}
+                        />
+                    </div>
+                </div>
+            )}
             <Button className="lg:hidden" variant="ghost" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? (<IoIosClose size={25} />) : (<IoIosMenu size={25} />)}</Button>
 
             {
@@ -171,6 +184,7 @@ export default function Nav() {
                                     )}
                                 </Link>
                             </li>
+                            <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/my-orders">My Orders</Link></li>
                             <li className="my-8" onClick={() => setMenuOpen(false)}><a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-primary-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a></li>
                             {!loading && (
                                 <li className="my-8">
@@ -179,15 +193,6 @@ export default function Nav() {
                                             <div className="space-y-2">
                                             <div className="flex justify-center">
                                                 <UserMenu />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-[11px] text-gray-500 mb-1">Delivery Location</p>
-                                                <p className="text-sm text-gray-900 mb-2">{locationDisplay}</p>
-                                                <AddressAutocomplete
-                                                    value={defaultAddressLine}
-                                                    disabled={profileLoading || savingAddress}
-                                                    onAddressSelect={handleAddressSelect}
-                                                />
                                             </div>
                                             </div>
                                         ) : (

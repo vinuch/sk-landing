@@ -16,6 +16,7 @@ type OrderRow = {
     payment_reference?: string | null;
     delivery_address?: string | null;
     delivery_status?: "preparing" | "packaging" | "with_rider" | "delivered" | null;
+    delivery_tracking?: string | null;
     bank_receipt_url?: string | null;
     paid_at?: string | null;
 };
@@ -63,7 +64,7 @@ export default function MyOrdersPage() {
 
             const { data, error } = await supabase
                 .from('Orders')
-                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, bank_receipt_url, paid_at')
+                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, delivery_tracking, bank_receipt_url, paid_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -124,17 +125,29 @@ export default function MyOrdersPage() {
     };
 
     const statusLabelMap: Record<string, string> = {
+        pending: 'Order received',
+        awaiting_confirmation: 'Awaiting payment confirmation',
+        confirmed: 'Payment confirmed',
         preparing: 'Still preparing',
+        ready: 'Ready for pickup',
+        rider_arrived: 'Rider has arrived',
+        rider_left: 'Rider on the way',
+        delivered: 'Delivered',
         packaging: 'Packaging',
         with_rider: 'With rider, on the way to you',
-        delivered: 'Delivered',
     };
 
     const statusBadgeClassMap: Record<string, string> = {
+        pending: 'bg-gray-100 text-gray-700',
+        awaiting_confirmation: 'bg-orange-100 text-orange-700',
+        confirmed: 'bg-blue-100 text-blue-700',
         preparing: 'bg-yellow-100 text-yellow-700',
+        ready: 'bg-purple-100 text-purple-700',
+        rider_arrived: 'bg-indigo-100 text-indigo-700',
+        rider_left: 'bg-cyan-100 text-cyan-700',
+        delivered: 'bg-green-100 text-green-700',
         packaging: 'bg-orange-100 text-orange-700',
         with_rider: 'bg-blue-100 text-blue-700',
-        delivered: 'bg-green-100 text-green-700',
     };
 
     if (!authLoading && !user) {
@@ -193,10 +206,10 @@ export default function MyOrdersPage() {
                                                     );
                                                 })()}
                                                 <span
-                                                    className={`text-xs px-2 py-1 rounded-full ${statusBadgeClassMap[order.delivery_status || 'preparing'] || 'bg-gray-100 text-gray-700'
+                                                    className={`text-xs px-2 py-1 rounded-full ${statusBadgeClassMap[order.delivery_tracking || order.delivery_status || 'pending'] || 'bg-gray-100 text-gray-700'
                                                         }`}
                                                 >
-                                                    {statusLabelMap[order.delivery_status || 'preparing'] || 'Still preparing'}
+                                                    {statusLabelMap[order.delivery_tracking || order.delivery_status || 'pending'] || 'Order received'}
                                                 </span>
                                             </div>
                                         </div>
