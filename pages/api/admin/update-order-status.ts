@@ -82,7 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Use the delivery_tracking column (text-based, more flexible)
-        const currentStatus = (order as any).delivery_tracking || order.delivery_status || "pending";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orderWithTracking = order as typeof order & { delivery_tracking?: string };
+        const currentStatus = orderWithTracking.delivery_tracking || order.delivery_status || "pending";
         let newStatus: string;
 
         if (action === "set") {
