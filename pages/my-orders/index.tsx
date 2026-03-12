@@ -156,8 +156,8 @@ export default function MyOrdersPage() {
 
     return (
         <Layout>
-            <div className={`bg-primary ${leagueSpartan.className}`}>
-                <div className="min-h-screen bg-white/60 p-6 md:p-12">
+            <div className={`bg-primary min-h-screen ${leagueSpartan.className}`}>
+                <div className="bg-white/60 p-6 md:p-12">
                     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-10">
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                             <h2 className="text-black text-3xl md:text-4xl">My Orders</h2>
