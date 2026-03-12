@@ -56,12 +56,15 @@ export default function AddressAutocomplete({
     const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const canSearch = Boolean(scriptReady && window.google?.maps?.places && inputValue.trim().length >= 3);
     
     // Debug logging
     useEffect(() => {
+        const info = `API: ${apiKey ? 'OK' : 'MISSING'} | Script: ${scriptReady ? 'OK' : 'LOADING'} | CanSearch: ${canSearch} | Suggestions: ${suggestions.length} | Open: ${open}`;
+        setDebugInfo(info);
         console.log('AddressAutocomplete debug:', { apiKey: !!apiKey, scriptReady, canSearch, suggestionsCount: suggestions.length, open });
     }, [apiKey, scriptReady, canSearch, suggestions.length, open]);
 
@@ -137,6 +140,8 @@ export default function AddressAutocomplete({
 
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
+            {/* Debug info - remove after testing */}
+            <div className="text-[10px] text-gray-500 mb-1 font-mono">{debugInfo}</div>
             {apiKey ? (
                 <Script
                     src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`}
