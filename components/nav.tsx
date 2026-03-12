@@ -151,6 +151,19 @@ export default function Nav() {
                     )}
                 </li>
             </ul>
+            {/* Mobile Location Picker - outside drawer for testing */}
+            {!loading && user && hasOnboarded && (
+                <div className="lg:hidden flex-1 mx-2 max-w-[200px]">
+                    <div className="text-left">
+                        <p className="text-[10px] text-gray-500">Delivery Location</p>
+                        <AddressAutocomplete
+                            value={defaultAddressLine}
+                            disabled={profileLoading || savingAddress}
+                            onAddressSelect={handleAddressSelect}
+                        />
+                    </div>
+                </div>
+            )}
             <Button className="lg:hidden" variant="ghost" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? (<IoIosClose size={25} />) : (<IoIosMenu size={25} />)}</Button>
 
             {
@@ -180,15 +193,6 @@ export default function Nav() {
                                             <div className="space-y-2">
                                             <div className="flex justify-center">
                                                 <UserMenu />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-[11px] text-gray-500 mb-1">Delivery Location</p>
-                                                <p className="text-sm text-gray-900 mb-2">{locationDisplay}</p>
-                                                <AddressAutocomplete
-                                                    value={defaultAddressLine}
-                                                    disabled={profileLoading || savingAddress}
-                                                    onAddressSelect={handleAddressSelect}
-                                                />
                                             </div>
                                             </div>
                                         ) : (
