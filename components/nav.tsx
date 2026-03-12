@@ -81,7 +81,7 @@ export default function Nav() {
                     </div>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"} z-50`}>
+            <PopoverContent align="end" className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"}`} style={{ zIndex: 100 }}>
                 <p className="text-sm font-medium mb-2">Choose delivery location</p>
                 <AddressAutocomplete
                     value={defaultAddressLine}
