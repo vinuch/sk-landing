@@ -2,6 +2,7 @@ import Layout from "@/components/layout";
 import { leagueSpartan, MenuItemsRow } from "..";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
@@ -410,11 +411,11 @@ export default function MenuItem() {
 
     useEffect(() => {
         formatSelections(quantities);
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [quantities])
     useEffect(() => {
         calculateSubtotal(menuItem?.list_price || 0, selections)
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selections])
 
 
@@ -521,11 +522,13 @@ export default function MenuItem() {
                     <div className="flex flex-col md:flex-row gap-8 md:p-6 mx-auto">
                         {/* Product Image */}
                         <div className="md:w-1/2 flex justify-center">
-                            <img
+                            <Image
                                 src={`/${menuItem?.name
                                     ?.split(" ")[0]
                                     .toLowerCase()}.png`}
-                                alt={menuItem?.name}
+                                alt={menuItem?.name || 'Menu item'}
+                                width={448}
+                                height={500}
                                 className="rounded-2xl shadow-md w-full max-w-md h-[500px] object-cover"
                             />
                         </div>

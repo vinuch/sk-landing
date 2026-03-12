@@ -4,6 +4,7 @@ import Layout from '@/components/layout';
 import AddressAutocomplete from '@/components/addressAutocomplete';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
+import Image from 'next/image';
 import { leagueSpartan } from '../restaurant-menu';
 import { Selections } from '../restaurant-menu/[id]';
 import { useEffect, useState } from 'react';
@@ -88,6 +89,7 @@ export default function CartPage() {
         if (paymentMethod === 'bank_transfer' && !bankAccount) {
             fetchBankAccount();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [paymentMethod]);
 
     const fetchBankAccount = async () => {
@@ -199,7 +201,7 @@ export default function CartPage() {
                 .getPublicUrl(filePath);
 
             return publicUrl;
-        } catch (error) {
+        } catch {
             toast.error('Failed to upload receipt');
             return null;
         } finally {
@@ -568,9 +570,11 @@ export default function CartPage() {
                                         >
                                             {/* 🥣 Left: Item Info */}
                                             <div className="flex items-center gap-4">
-                                                <img
+                                                <Image
                                                     src={`/${item.name?.split(' ')[0].toLowerCase()}.png`}
-                                                    alt={item.name}
+                                                    alt={item.name || 'Menu item'}
+                                                    width={64}
+                                                    height={64}
                                                     className="w-16 h-16 rounded-lg object-cover shadow-sm"
                                                 />
                                                 <div>

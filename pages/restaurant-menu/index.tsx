@@ -55,6 +55,7 @@ export default function RestaurantMenu({ preview }: RestaurantMenuProps) {
     };
 
     fetchMenuItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
