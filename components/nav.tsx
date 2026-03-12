@@ -156,8 +156,7 @@ export default function Nav() {
             {
                 menuOpen ? (
                     <div className="fixed top-16 left-0 lg:hidden h-screen w-screen bg-white z-30 text-black flex justify-center">
-                        <div id="mobile-menu-portal" className="absolute inset-0 pointer-events-none" />
-                        <ul className="flex-co gap-6 text-center mt-12 relative z-10">
+                        <ul className="flex-co gap-6 text-center mt-12">
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/">Home</Link></li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                             {/* <li className="my-8">About Us</li> */}
@@ -181,7 +180,15 @@ export default function Nav() {
                                             <div className="flex justify-center">
                                                 <UserMenu />
                                             </div>
-                                            <LocationPicker compact />
+                                            <div className="text-left">
+                                                <p className="text-[11px] text-gray-500 mb-1">Delivery Location</p>
+                                                <p className="text-sm text-gray-900 mb-2">{locationDisplay}</p>
+                                                <AddressAutocomplete
+                                                    value={defaultAddressLine}
+                                                    disabled={profileLoading || savingAddress}
+                                                    onAddressSelect={handleAddressSelect}
+                                                />
+                                            </div>
                                             </div>
                                         ) : (
                                             <SignupForm />
