@@ -182,10 +182,10 @@ export default function CartPage() {
         try {
             const fileExt = receiptFile.name.split('.').pop();
             const fileName = `receipt_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const filePath = `bank-receipts/${fileName}`;
+            const filePath = `Bank-receipts/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('bank-receipts')
+                .from('Bank-receipts')
                 .upload(filePath, receiptFile, {
                     cacheControl: '3600',
                     upsert: false,
@@ -197,7 +197,7 @@ export default function CartPage() {
             }
 
             const { data: { publicUrl } } = supabase.storage
-                .from('bank-receipts')
+                .from('Bank-receipts')
                 .getPublicUrl(filePath);
 
             return publicUrl;
