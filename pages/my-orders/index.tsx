@@ -16,6 +16,8 @@ type OrderRow = {
     payment_reference?: string | null;
     delivery_address?: string | null;
     delivery_status?: "preparing" | "packaging" | "with_rider" | "delivered" | null;
+    bank_receipt_url?: string | null;
+    paid_at?: string | null;
 };
 
 type OrderItemRow = {
@@ -61,7 +63,7 @@ export default function MyOrdersPage() {
 
             const { data, error } = await supabase
                 .from('Orders')
-                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status')
+                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, bank_receipt_url, paid_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -109,6 +111,17 @@ export default function MyOrdersPage() {
         () => orders.filter((order) => order.payment_status === true).length,
         [orders]
     );
+
+    const getPaymentStatusDisplay = (order: OrderRow) => {
+        if (order.payment_status === true) {
+            return { label: 'Paid', className: 'bg-green-100 text-green-700' };
+        }
+        // Has receipt but not confirmed yet
+        if (order.bank_receipt_url && order.paid_at) {
+            return { label: 'Awaiting Verification', className: 'bg-orange-100 text-orange-700' };
+        }
+        return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' };
+    };
 
     const statusLabelMap: Record<string, string> = {
         preparing: 'Still preparing',
@@ -172,14 +185,14 @@ export default function MyOrdersPage() {
                                         <div className="flex flex-wrap justify-between gap-3 items-center">
                                             <p className="text-black font-semibold">Order #{order.id}</p>
                                             <div className="flex items-center gap-2">
-                                                <span
-                                                    className={`text-xs px-2 py-1 rounded-full ${order.payment_status
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-yellow-100 text-yellow-700'
-                                                        }`}
-                                                >
-                                                    {order.payment_status ? 'Paid' : 'Pending'}
-                                                </span>
+                                                {(() => {
+                                                    const status = getPaymentStatusDisplay(order);
+                                                    return (
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${status.className}`}>
+                                                            {status.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                                 <span
                                                     className={`text-xs px-2 py-1 rounded-full ${statusBadgeClassMap[order.delivery_status || 'preparing'] || 'bg-gray-100 text-gray-700'
                                                         }`}

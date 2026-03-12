@@ -6,12 +6,19 @@ import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import { leagueSpartan } from '../restaurant-menu';
 import { Selections } from '../restaurant-menu/[id]';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useUserProfile from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
+
+type BankAccount = {
+    id: number;
+    account_name: string;
+    account_number: string;
+    bank_name: string;
+};
 
 type CheckoutInitResponse = {
     success?: boolean;
@@ -26,6 +33,15 @@ type CheckoutVerifyResponse = {
     success?: boolean;
     error?: string;
     details?: string;
+};
+
+type BankTransferCreateResponse = {
+    success?: boolean;
+    error?: string;
+    details?: string;
+    orderId?: number;
+    reference?: string;
+    amount?: number;
 };
 
 function parseJsonResponse<T>(raw: string, fallback: T): T {
@@ -43,7 +59,7 @@ export default function CartPage() {
     const { items, removeItem, clearCart } = useCartStore();
     const { defaultAddressLine, saveDefaultAddress, loading: profileLoading } = useUserProfile();
     const { user, session } = useAuth();
-    const [paymentMethod, setPaymentMethod] = useState<'pay_online' | ''>('');
+    const [paymentMethod, setPaymentMethod] = useState<'pay_online' | 'bank_transfer' | ''>('');
     const [editingPayment, setEditingPayment] = useState(false);
     const [editingAddress, setEditingAddress] = useState(false);
     const [savingAddress, setSavingAddress] = useState(false);
@@ -54,11 +70,39 @@ export default function CartPage() {
     const [vendorDraft, setVendorDraft] = useState('');
     const [editingDelivery, setEditingDelivery] = useState(false);
     const [editingVendor, setEditingVendor] = useState(false);
+    
+    // Bank transfer specific states
+    const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
+    const [receiptFile, setReceiptFile] = useState<File | null>(null);
+    const [receiptUploading, setReceiptUploading] = useState(false);
+    const [bankTransferOrderId, setBankTransferOrderId] = useState<number | null>(null);
+    const [showBankDetails, setShowBankDetails] = useState(false);
 
     const totalPrice = items.reduce(
         (acc, item) => acc + (item.subTotal ?? item.subTotal) * item.quantity,
         0
     );
+
+    // Fetch bank account details when bank transfer is selected
+    useEffect(() => {
+        if (paymentMethod === 'bank_transfer' && !bankAccount) {
+            fetchBankAccount();
+        }
+    }, [paymentMethod]);
+
+    const fetchBankAccount = async () => {
+        try {
+            const res = await fetch('/api/bank-accounts');
+            const json = await res.json();
+            if (res.ok && json.success) {
+                setBankAccount(json.bankAccount);
+            } else {
+                toast.error('Could not load bank account details');
+            }
+        } catch {
+            toast.error('Could not load bank account details');
+        }
+    };
 
     function formatSelectionsDescription(selections: Selections): string {
         const parts: string[] = [];
@@ -101,7 +145,13 @@ export default function CartPage() {
         return parts.join(' ') || 'No selections';
     }
 
-    const paymentValue = paymentMethod === 'pay_online' ? 'Pay online (Paystack)' : 'choose';
+    const getPaymentLabel = () => {
+        if (paymentMethod === 'pay_online') return 'Pay online (Paystack)';
+        if (paymentMethod === 'bank_transfer') return 'Bank Transfer';
+        return 'choose';
+    };
+
+    const paymentValue = getPaymentLabel();
     const addressValue = defaultAddressLine || 'choose';
 
     const handleAddressSelect = async (address: string) => {
@@ -119,9 +169,95 @@ export default function CartPage() {
     };
 
     const missingLogin = !user?.id;
-    const missingPayment = paymentMethod !== 'pay_online';
+    const missingPayment = !paymentMethod;
     const missingAddress = !defaultAddressLine;
     const canCheckout = !missingLogin && !missingPayment && !missingAddress;
+
+    const handleReceiptUpload = async (): Promise<string | null> => {
+        if (!receiptFile) return null;
+        
+        setReceiptUploading(true);
+        try {
+            const fileExt = receiptFile.name.split('.').pop();
+            const fileName = `receipt_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `bank-receipts/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('bank-receipts')
+                .upload(filePath, receiptFile, {
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+
+            if (uploadError) {
+                toast.error('Failed to upload receipt: ' + uploadError.message);
+                return null;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('bank-receipts')
+                .getPublicUrl(filePath);
+
+            return publicUrl;
+        } catch (error) {
+            toast.error('Failed to upload receipt');
+            return null;
+        } finally {
+            setReceiptUploading(false);
+        }
+    };
+
+    const handleBankTransferSubmit = async () => {
+        if (!receiptFile) {
+            toast.error('Please upload a receipt image');
+            return;
+        }
+
+        const receiptUrl = await handleReceiptUpload();
+        if (!receiptUrl) return;
+
+        const {
+            data: { session: freshSession },
+        } = await supabase.auth.getSession();
+        const accessToken = freshSession?.access_token || session?.access_token;
+
+        if (!accessToken) {
+            toast.error('Your login session expired. Please login again.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/orders/confirm-transfer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    orderId: bankTransferOrderId,
+                    receiptUrl,
+                }),
+            });
+
+            const raw = await res.text();
+            const json = parseJsonResponse<{ success?: boolean; error?: string; message?: string }>(raw, { error: 'Invalid response' });
+
+            if (!res.ok || !json?.success) {
+                toast.error(json?.error || 'Could not submit payment confirmation');
+                return;
+            }
+
+            clearCart();
+            setPaymentMethod('');
+            setReceiptFile(null);
+            setBankTransferOrderId(null);
+            setShowBankDetails(false);
+            toast.success(json.message || 'Payment receipt submitted!');
+            router.push('/order-confirmation?status=pending');
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Could not submit payment confirmation');
+        }
+    };
 
     const handlePlaceOrder = async () => {
         if (!user?.id) {
@@ -134,6 +270,59 @@ export default function CartPage() {
             return;
         }
 
+        // Handle bank transfer flow
+        if (paymentMethod === 'bank_transfer') {
+            setPlacingOrder(true);
+            try {
+                const {
+                    data: { session: freshSession },
+                } = await supabase.auth.getSession();
+                const accessToken = freshSession?.access_token || session?.access_token;
+
+                if (!accessToken) {
+                    setPlacingOrder(false);
+                    toast.error('Your login session expired. Please login again.');
+                    return;
+                }
+
+                const res = await fetch('/api/bank-transfer/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify({
+                        paymentMethod,
+                        deliveryAddress: defaultAddressLine,
+                        deliveryInstructions,
+                        vendorInstructions,
+                        items: items.map((item) => ({
+                            id: item.productRef || item.id,
+                            quantity: item.quantity,
+                        })),
+                    }),
+                });
+
+                const raw = await res.text();
+                const json = parseJsonResponse<BankTransferCreateResponse>(raw, { error: 'Invalid response' });
+
+                if (!res.ok || !json?.success) {
+                    setPlacingOrder(false);
+                    toast.error(json?.error || json?.details || 'Could not create order');
+                    return;
+                }
+
+                setBankTransferOrderId(json.orderId || null);
+                setShowBankDetails(true);
+                setPlacingOrder(false);
+            } catch (error: unknown) {
+                setPlacingOrder(false);
+                toast.error(error instanceof Error ? error.message : 'Could not create order');
+            }
+            return;
+        }
+
+        // Handle Paystack flow
         const payerEmail = user?.email || `guest-${(user?.id || Date.now().toString()).slice(0, 8)}@satellitekitchen.ng`;
 
         try {
@@ -270,18 +459,9 @@ export default function CartPage() {
         }
     };
 
-    // useEffect(() => {
-    //     useMenuStore.persist.onFinishHydration(() => {
-    //         console.log("✅ Menu store rehydrated", useMenuStore.getState());
-    //     });
-    //     useCartStore.persist.onFinishHydration(() => {
-    //         console.log("✅ Cart store rehydrated", useCartStore.getState());
-    //     });
-    // }, []);
 
 
-
-    if (items.length === 0) {
+    if (items.length === 0 && !showBankDetails) {
         return (
             <Layout>
 
@@ -314,250 +494,301 @@ export default function CartPage() {
                         Your cart
                     </h2>
                     <div className="max-w-3xl mx-auto bg-white shadow-md rounded-2xl p-6 md:p-10 ">
-                        {/* <h1 className="text-2xl font-semibold mb-6 text-black">Your Cart</h1> */}
-
-                        <div className="divide-y">
-                            {items.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="flex justify-between items-center py-4"
-                                >
-                                    {/* 🥣 Left: Item Info */}
-                                    <div className="flex items-center gap-4">
-                                        <img
-                                            src={`/${item.name?.split(' ')[0].toLowerCase()}.png`}
-                                            alt={item.name}
-                                            className="w-16 h-16 rounded-lg object-cover shadow-sm"
-                                        />
-                                        <div>
-                                            <p className="font-medium text-black">{item.name}</p>
-                                            <p className="font-medium text-black w-64">{formatSelectionsDescription(item.selections)}</p>
-                                            <p className="text-gray-500 text-sm">
-                                                ₦{(item.subTotal ?? item.subTotal).toLocaleString()}
-                                            </p>
+                        
+                        {/* Bank Transfer Details Modal */}
+                        {showBankDetails && bankAccount && (
+                            <div className="mb-6 border-2 border-primary rounded-xl p-6 bg-orange-50">
+                                <h3 className="text-xl font-semibold text-black mb-4">Bank Transfer Payment</h3>
+                                <p className="text-gray-700 mb-4">Please transfer <strong>₦{totalPrice.toLocaleString()}</strong> to the account below:</p>
+                                
+                                <div className="bg-white rounded-lg p-4 mb-4 border">
+                                    <div className="grid grid-cols-1 gap-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Bank Name:</span>
+                                            <span className="font-semibold text-black">{bankAccount.bank_name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Account Name:</span>
+                                            <span className="font-semibold text-black">{bankAccount.account_name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Account Number:</span>
+                                            <span className="font-semibold text-black text-lg">{bankAccount.account_number}</span>
                                         </div>
                                     </div>
-
-                                    {/* ⚙️ Right: Quantity Controls */}
-                                    <div className="flex items-center gap-4">
-                                        {/* <button
-                                            onClick={() =>
-                                                addItem({ ...item, quantity: -1 }) // reuses same logic to subtract
-                                            }
-                                            disabled={item.quantity <= 1}
-                                            className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100 disabled:opacity-40"
-                                        >
-                                            −
-                                        </button>
-                                        <span className="w-5 text-center text-gray-800">
-                                            {item.quantity}
-                                        </span>
-                                        <button
-                                            onClick={() => addItem({ ...item, quantity: 1 })}
-                                            className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-gray-100"
-                                        >
-                                            +
-                                        </button> */}
-                                        <button
-                                            onClick={() => removeItem(item.id)}
-                                            className="ml-3 text-red-500 hover:text-red-700 text-sm"
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
                                 </div>
-                            ))}
-                        </div>
 
-                        {/* 🧾 Total */}
-                        <div className="flex justify-between items-center mt-6 pt-6 border-t">
-                            <span className="text-lg font-semibold text-black">Total</span>
-                            <span className="text-lg font-semibold text-green-600">
-                                ₦{totalPrice.toLocaleString()}
-                            </span>
-                        </div>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-black mb-2">
+                                        Upload Payment Receipt <span className="text-red-600">*</span>
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                                        className="w-full border rounded-md p-2 text-gray-900"
+                                    />
+                                    {receiptFile && (
+                                        <p className="text-sm text-green-600 mt-1">Selected: {receiptFile.name}</p>
+                                    )}
+                                </div>
 
-
-                        <hr className="my-6" />
-
-                        <div className="text-black">
-                            <div className="flex justify-between items-start my-2 gap-3">
-                                <p>
-                                    Payment Method <span className="text-red-600">*</span>
-                                    {missingPayment && <span className="text-xs text-red-600 ml-2">required</span>}
-                                </p>
-                                <button
-                                    type="button"
-                                    className="text-red-500 hover:text-red-700 text-right"
-                                    onClick={() => setEditingPayment((prev) => !prev)}
-                                >
-                                    {paymentValue}
-                                </button>
-                            </div>
-                            {editingPayment && (
-                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                <div className="flex gap-3">
                                     <button
-                                        type="button"
-                                        className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'pay_online' ? 'border-primary text-primary' : 'border-gray-300'
-                                            }`}
                                         onClick={() => {
-                                            setPaymentMethod('pay_online');
-                                            setEditingPayment(false);
+                                            setShowBankDetails(false);
+                                            setBankTransferOrderId(null);
                                         }}
+                                        className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
                                     >
-                                        Pay online (Paystack)
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleBankTransferSubmit}
+                                        disabled={!receiptFile || receiptUploading}
+                                        className={`flex-1 py-3 rounded-xl text-white ${
+                                            !receiptFile || receiptUploading
+                                                ? 'bg-green-400 cursor-not-allowed'
+                                                : 'bg-green-800 hover:bg-green-700'
+                                        }`}
+                                    >
+                                        {receiptUploading ? 'Uploading...' : 'I Have Made Payment'}
                                     </button>
                                 </div>
-                            )}
-
-                            <div className="flex justify-between items-start my-2 gap-3">
-                                <p>
-                                    Delivery Address <span className="text-red-600">*</span>
-                                    {missingAddress && <span className="text-xs text-red-600 ml-2">required</span>}
-                                </p>
-                                <button
-                                    type="button"
-                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
-                                    onClick={() => setEditingAddress((prev) => !prev)}
-                                >
-                                    {addressValue}
-                                </button>
                             </div>
-                            {editingAddress && (
-                                <div className="mb-3">
-                                    <AddressAutocomplete
-                                        value={defaultAddressLine}
-                                        disabled={profileLoading || savingAddress}
-                                        onAddressSelect={handleAddressSelect}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="flex justify-between items-start my-2 gap-3">
-                                <p>Delivery Instructions</p>
-                                <button
-                                    type="button"
-                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
-                                    onClick={() => {
-                                        setDeliveryDraft(deliveryInstructions);
-                                        setEditingDelivery((prev) => !prev);
-                                    }}
-                                >
-                                    {deliveryInstructions || 'choose'}
-                                </button>
-                            </div>
-                            {editingDelivery && (
-                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
-                                    <textarea
-                                        rows={3}
-                                        className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
-                                        placeholder="Add delivery instructions"
-                                        value={deliveryDraft}
-                                        onChange={(e) => setDeliveryDraft(e.target.value)}
-                                    />
-                                    <div className="mt-2 flex justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            className="px-3 py-2 text-sm border rounded-md"
-                                            onClick={() => setEditingDelivery(false)}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="px-3 py-2 text-sm bg-primary text-white rounded-md"
-                                            onClick={() => {
-                                                setDeliveryInstructions(deliveryDraft.trim());
-                                                setEditingDelivery(false);
-                                            }}
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-between items-start my-2 gap-3">
-                                <p>Vendor Instructions</p>
-                                <button
-                                    type="button"
-                                    className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
-                                    onClick={() => {
-                                        setVendorDraft(vendorInstructions);
-                                        setEditingVendor((prev) => !prev);
-                                    }}
-                                >
-                                    {vendorInstructions || 'choose'}
-                                </button>
-                            </div>
-                            {editingVendor && (
-                                <div className="mb-3 border rounded-md p-3 bg-gray-50">
-                                    <textarea
-                                        rows={3}
-                                        className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
-                                        placeholder="Add vendor instructions"
-                                        value={vendorDraft}
-                                        onChange={(e) => setVendorDraft(e.target.value)}
-                                    />
-                                    <div className="mt-2 flex justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            className="px-3 py-2 text-sm border rounded-md"
-                                            onClick={() => setEditingVendor(false)}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="px-3 py-2 text-sm bg-primary text-white rounded-md"
-                                            onClick={() => {
-                                                setVendorInstructions(vendorDraft.trim());
-                                                setEditingVendor(false);
-                                            }}
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                        </div>
-
-
-                        {/* 🧹 Actions */}
-                        {!canCheckout && (
-                            <p className="text-sm text-red-600 mb-3">
-                                {missingLogin && 'Login required. '}
-                                {missingPayment && 'Choose payment method. '}
-                                {missingAddress && 'Choose delivery address.'}
-                            </p>
                         )}
-                        <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                            {/* <Link
-                                href="/restaurant-menu"
-                                className="flex-1 text-center border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50"
-                            >
-                                Continue Shopping
-                            </Link> */}
-                            <button
-                                onClick={clearCart}
-                                className="flex-1 text-center bg-red-500 text-white py-3 rounded-xl hover:bg-red-600"
-                            >
-                                Clear Cart
-                            </button>
-                            <button
-                                onClick={handlePlaceOrder}
-                                disabled={placingOrder || !canCheckout}
-                                className={`flex-1 text-center text-white py-3 rounded-xl ${placingOrder || !canCheckout
-                                    ? 'bg-green-400 cursor-not-allowed opacity-70'
-                                    : 'bg-green-800 hover:bg-green-700'
-                                    }`}
-                            >
-                                {placingOrder ? 'Processing...' : 'Place Order'}
-                            </button>
-                        </div>
+
+                        {!showBankDetails && (
+                            <>
+                                <div className="divide-y">
+                                    {items.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="flex justify-between items-center py-4"
+                                        >
+                                            {/* 🥣 Left: Item Info */}
+                                            <div className="flex items-center gap-4">
+                                                <img
+                                                    src={`/${item.name?.split(' ')[0].toLowerCase()}.png`}
+                                                    alt={item.name}
+                                                    className="w-16 h-16 rounded-lg object-cover shadow-sm"
+                                                />
+                                                <div>
+                                                    <p className="font-medium text-black">{item.name}</p>
+                                                    <p className="font-medium text-black w-64">{formatSelectionsDescription(item.selections)}</p>
+                                                    <p className="text-gray-500 text-sm">
+                                                        ₦{(item.subTotal ?? item.subTotal).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* ⚙️ Right: Quantity Controls */}
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={() => removeItem(item.id)}
+                                                    className="ml-3 text-red-500 hover:text-red-700 text-sm"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* 🧾 Total */}
+                                <div className="flex justify-between items-center mt-6 pt-6 border-t">
+                                    <span className="text-lg font-semibold text-black">Total</span>
+                                    <span className="text-lg font-semibold text-green-600">
+                                        ₦{totalPrice.toLocaleString()}
+                                    </span>
+                                </div>
 
 
+                                <hr className="my-6" />
+
+                                <div className="text-black">
+                                    <div className="flex justify-between items-start my-2 gap-3">
+                                        <p>
+                                            Payment Method <span className="text-red-600">*</span>
+                                            {missingPayment && <span className="text-xs text-red-600 ml-2">required</span>}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="text-red-500 hover:text-red-700 text-right"
+                                            onClick={() => setEditingPayment((prev) => !prev)}
+                                        >
+                                            {paymentValue}
+                                        </button>
+                                    </div>
+                                    {editingPayment && (
+                                        <div className="mb-3 border rounded-md p-3 bg-gray-50 space-y-2">
+                                            <button
+                                                type="button"
+                                                className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'pay_online' ? 'border-primary text-primary bg-orange-50' : 'border-gray-300'
+                                                    }`}
+                                                onClick={() => {
+                                                    setPaymentMethod('pay_online');
+                                                    setEditingPayment(false);
+                                                }}
+                                            >
+                                                Pay online (Paystack)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'bank_transfer' ? 'border-primary text-primary bg-orange-50' : 'border-gray-300'
+                                                    }`}
+                                                onClick={() => {
+                                                    setPaymentMethod('bank_transfer');
+                                                    setEditingPayment(false);
+                                                }}
+                                            >
+                                                Bank Transfer
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between items-start my-2 gap-3">
+                                        <p>
+                                            Delivery Address <span className="text-red-600">*</span>
+                                            {missingAddress && <span className="text-xs text-red-600 ml-2">required</span>}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                            onClick={() => setEditingAddress((prev) => !prev)}
+                                        >
+                                            {addressValue}
+                                        </button>
+                                    </div>
+                                    {editingAddress && (
+                                        <div className="mb-3">
+                                            <AddressAutocomplete
+                                                value={defaultAddressLine}
+                                                disabled={profileLoading || savingAddress}
+                                                onAddressSelect={handleAddressSelect}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between items-start my-2 gap-3">
+                                        <p>Delivery Instructions</p>
+                                        <button
+                                            type="button"
+                                            className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                            onClick={() => {
+                                                setDeliveryDraft(deliveryInstructions);
+                                                setEditingDelivery((prev) => !prev);
+                                            }}
+                                        >
+                                            {deliveryInstructions || 'choose'}
+                                        </button>
+                                    </div>
+                                    {editingDelivery && (
+                                        <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                            <textarea
+                                                rows={3}
+                                                className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
+                                                placeholder="Add delivery instructions"
+                                                value={deliveryDraft}
+                                                onChange={(e) => setDeliveryDraft(e.target.value)}
+                                            />
+                                            <div className="mt-2 flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-2 text-sm border rounded-md"
+                                                    onClick={() => setEditingDelivery(false)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-2 text-sm bg-primary text-white rounded-md"
+                                                    onClick={() => {
+                                                        setDeliveryInstructions(deliveryDraft.trim());
+                                                        setEditingDelivery(false);
+                                                    }}
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between items-start my-2 gap-3">
+                                        <p>Vendor Instructions</p>
+                                        <button
+                                            type="button"
+                                            className="text-red-500 hover:text-red-700 text-right max-w-56 break-words"
+                                            onClick={() => {
+                                                setVendorDraft(vendorInstructions);
+                                                setEditingVendor((prev) => !prev);
+                                            }}
+                                        >
+                                            {vendorInstructions || 'choose'}
+                                        </button>
+                                    </div>
+                                    {editingVendor && (
+                                        <div className="mb-3 border rounded-md p-3 bg-gray-50">
+                                            <textarea
+                                                rows={3}
+                                                className="w-full border rounded-md p-2 text-gray-900 placeholder:text-gray-500"
+                                                placeholder="Add vendor instructions"
+                                                value={vendorDraft}
+                                                onChange={(e) => setVendorDraft(e.target.value)}
+                                            />
+                                            <div className="mt-2 flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-2 text-sm border rounded-md"
+                                                    onClick={() => setEditingVendor(false)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-2 text-sm bg-primary text-white rounded-md"
+                                                    onClick={() => {
+                                                        setVendorInstructions(vendorDraft.trim());
+                                                        setEditingVendor(false);
+                                                    }}
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                </div>
+
+
+                                {/* 🧹 Actions */}
+                                {!canCheckout && (
+                                    <p className="text-sm text-red-600 mb-3">
+                                        {missingLogin && 'Login required. '}
+                                        {missingPayment && 'Choose payment method. '}
+                                        {missingAddress && 'Choose delivery address.'}
+                                    </p>
+                                )}
+                                <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                                    <button
+                                        onClick={clearCart}
+                                        className="flex-1 text-center bg-red-500 text-white py-3 rounded-xl hover:bg-red-600"
+                                    >
+                                        Clear Cart
+                                    </button>
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        disabled={placingOrder || !canCheckout}
+                                        className={`flex-1 text-center text-white py-3 rounded-xl ${placingOrder || !canCheckout
+                                            ? 'bg-green-400 cursor-not-allowed opacity-70'
+                                            : 'bg-green-800 hover:bg-green-700'
+                                            }`}
+                                    >
+                                        {placingOrder ? 'Processing...' : 'Place Order'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
                     </div>
 
@@ -567,7 +798,3 @@ export default function CartPage() {
         </Layout>
     );
 }
-
-
-
-
