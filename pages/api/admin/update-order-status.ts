@@ -1,13 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import type { Database } from "@/types_db";
 
-type DeliveryStatus = "preparing" | "packaging" | "with_rider" | "delivered";
+// Use the database enum type directly
+type DeliveryStatus = Database["public"]["Enums"]["Delivery_status"];
 
-const STATUS_FLOW: DeliveryStatus[] = ["preparing", "packaging", "with_rider", "delivered"];
+const STATUS_FLOW: DeliveryStatus[] = [
+    "pending",
+    "awaiting_confirmation", 
+    "confirmed",
+    "preparing",
+    "ready",
+    "rider_arrived",
+    "rider_left",
+    "delivered"
+];
 
 type UpdateOrderStatusBody = {
     orderId?: number | string;
-    action?: "next" | "set";
+    action?: "next" | "set" | "previous";
     status?: DeliveryStatus;
 };
 
@@ -15,6 +26,12 @@ function getNextStatus(current: DeliveryStatus): DeliveryStatus {
     const index = STATUS_FLOW.indexOf(current);
     if (index < 0 || index === STATUS_FLOW.length - 1) return "delivered";
     return STATUS_FLOW[index + 1];
+}
+
+function getPreviousStatus(current: DeliveryStatus): DeliveryStatus {
+    const index = STATUS_FLOW.indexOf(current);
+    if (index <= 0) return "pending";
+    return STATUS_FLOW[index - 1];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,14 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const action = body.action || "next";
 
-    if (action !== "next" && action !== "set") {
-        return res.status(400).json({ error: "action must be 'next' or 'set'" });
+    if (action !== "next" && action !== "set" && action !== "previous") {
+        return res.status(400).json({ error: "action must be 'next', 'previous', or 'set'" });
     }
 
     try {
         const { data: order, error: orderError } = await supabaseAdmin
             .from("Orders")
-            .select("id, delivery_status")
+            .select("id, delivery_status, payment_status, payment_method, bank_receipt_url")
             .eq("id", orderId)
             .single();
 
@@ -64,24 +81,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: "Order not found" });
         }
 
-        const currentStatus = (order.delivery_status || "preparing") as DeliveryStatus;
+        // Use the delivery_status directly from database
+        const currentStatus = order.delivery_status || "pending";
         let newStatus: DeliveryStatus;
 
         if (action === "set") {
             const requested = body.status;
             if (!requested || !STATUS_FLOW.includes(requested)) {
                 return res.status(400).json({
-                    error: "status must be one of: preparing, packaging, with_rider, delivered",
+                    error: "status must be one of: " + STATUS_FLOW.join(", "),
                 });
             }
             newStatus = requested;
+        } else if (action === "previous") {
+            newStatus = getPreviousStatus(currentStatus);
         } else {
             newStatus = getNextStatus(currentStatus);
         }
 
         const { error: updateError } = await supabaseAdmin
             .from("Orders")
-            .update({ delivery_status: newStatus })
+            .update({ 
+                delivery_status: newStatus
+            })
             .eq("id", orderId);
 
         if (updateError) {
