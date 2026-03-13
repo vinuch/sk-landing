@@ -27,15 +27,6 @@ type AutocompleteServiceLike = {
     ) => void;
 };
 
-type GoogleMapsLike = {
-    maps?: {
-        places?: {
-            AutocompleteService: new () => AutocompleteServiceLike;
-            PlacesServiceStatus: PlacesServiceStatus;
-        };
-    };
-};
-
 export default function AddressAutocomplete({
     value = "",
     disabled,
