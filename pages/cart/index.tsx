@@ -396,7 +396,6 @@ export default function CartPage() {
             }
 
             clearCart();
-            setPaymentMethod('');
             setReceiptFile(null);
             setBankTransferOrderId(null);
             setShowBankDetails(false);
