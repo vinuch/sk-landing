@@ -71,8 +71,13 @@ export default function AddressAutocomplete({
     }, []);
 
     useEffect(() => {
-        if (!scriptReady || !window.google?.maps?.places || serviceRef.current) return;
+        if (!scriptReady || !window.google?.maps?.places || serviceRef.current) {
+            console.log('Service not created:', { scriptReady, hasGoogle: !!window.google?.maps?.places, hasService: !!serviceRef.current });
+            return;
+        }
+        console.log('Creating AutocompleteService');
         serviceRef.current = new window.google.maps.places.AutocompleteService();
+        console.log('AutocompleteService created');
     }, [scriptReady]);
 
     useEffect(() => {
@@ -87,7 +92,9 @@ export default function AddressAutocomplete({
     }, []);
 
     useEffect(() => {
+        console.log('Search effect:', { canSearch, hasService: !!serviceRef.current, inputLength: inputValue.trim().length });
         if (!canSearch || !serviceRef.current) {
+            console.log('Cannot search:', { canSearch, hasService: !!serviceRef.current });
             setSuggestions([]);
             return;
         }
@@ -138,7 +145,7 @@ export default function AddressAutocomplete({
         <div className={`relative ${className}`} ref={wrapperRef}>
             {/* Debug: Show API status */}
             <div className="text-[10px] text-gray-500 mb-1">
-                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length} | Status: {searchStatus}
+                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | CanSearch: {canSearch ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length} | Status: {searchStatus}
             </div>
             
             {apiKey ? (
