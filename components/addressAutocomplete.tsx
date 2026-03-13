@@ -36,12 +36,6 @@ type GoogleMapsLike = {
     };
 };
 
-declare global {
-    interface Window {
-        google?: GoogleMapsLike;
-    }
-}
-
 export default function AddressAutocomplete({
     value = "",
     disabled,
