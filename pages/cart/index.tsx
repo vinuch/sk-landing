@@ -68,10 +68,30 @@ type GeocoderLike = {
     ) => void;
 };
 
+type PlacePrediction = {
+    place_id: string;
+    description: string;
+};
+
+type AutocompleteServiceLike = {
+    getPlacePredictions: (
+        request: { input: string; componentRestrictions?: { country: string } },
+        callback: (predictions: PlacePrediction[] | null, status: string) => void
+    ) => void;
+};
+
+type PlacesServiceStatusLike = {
+    OK: string;
+};
+
 type GoogleMapsLike = {
     maps?: {
         Geocoder: new () => GeocoderLike;
         GeocoderStatus: GeocoderStatusLike;
+        places: {
+            AutocompleteService: new () => AutocompleteServiceLike;
+            PlacesServiceStatus: PlacesServiceStatusLike;
+        };
     };
 };
 
