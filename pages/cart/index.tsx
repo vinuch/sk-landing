@@ -24,21 +24,6 @@ type BankAccount = {
     bank_name: string;
 };
 
-type CheckoutInitResponse = {
-    success?: boolean;
-    error?: string;
-    details?: string;
-    reference?: string;
-    amountKobo?: number;
-    paystackPublicKey?: string;
-};
-
-type CheckoutVerifyResponse = {
-    success?: boolean;
-    error?: string;
-    details?: string;
-};
-
 type BankTransferCreateResponse = {
     success?: boolean;
     error?: string;
@@ -116,7 +101,7 @@ export default function CartPage() {
     const { items, removeItem, clearCart } = useCartStore();
     const { defaultAddressLine, saveDefaultAddress, loading: profileLoading } = useUserProfile();
     const { user, session } = useAuth();
-    const [paymentMethod, setPaymentMethod] = useState<'pay_online' | 'bank_transfer' | ''>('');
+    const [paymentMethod, setPaymentMethod] = useState<'bank_transfer'>('bank_transfer');
     const [editingPayment, setEditingPayment] = useState(false);
     const [editingAddress, setEditingAddress] = useState(false);
     const [savingAddress, setSavingAddress] = useState(false);
@@ -221,7 +206,6 @@ export default function CartPage() {
     }
 
     const getPaymentLabel = () => {
-        if (paymentMethod === 'pay_online') return 'Pay online (Paystack)';
         if (paymentMethod === 'bank_transfer') return 'Bank Transfer';
         return 'choose';
     };
@@ -486,142 +470,6 @@ export default function CartPage() {
             }
             return;
         }
-
-        // Handle Paystack flow
-        const payerEmail = user?.email || `guest-${(user?.id || Date.now().toString()).slice(0, 8)}@satellitekitchen.ng`;
-
-        try {
-            setPlacingOrder(true);
-            const {
-                data: { session: freshSession },
-            } = await supabase.auth.getSession();
-            const accessToken = freshSession?.access_token || session?.access_token;
-
-            if (!accessToken) {
-                setPlacingOrder(false);
-                toast.error('Your login session expired. Please login again.');
-                return;
-            }
-
-            const initRes = await fetch('/api/paystack/initiate-checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    paymentMethod,
-                    deliveryAddress: defaultAddressLine,
-                    deliveryInstructions,
-                    vendorInstructions,
-                    items: items.map((item) => ({
-                        id: item.productRef || item.id,
-                        quantity: item.quantity,
-                    })),
-                }),
-            });
-
-            const initRaw = await initRes.text();
-            const initJson = parseJsonResponse<CheckoutInitResponse>(initRaw, {
-                error: "Invalid response from checkout init endpoint",
-            });
-
-            if (!initRes.ok || !initJson?.success) {
-                setPlacingOrder(false);
-                toast.error(initJson?.error || initJson?.details || 'Could not start checkout');
-                return;
-            }
-
-            const reference = String(initJson.reference || '').trim();
-            const amountKobo = Number(initJson.amountKobo || 0);
-            const publicKey = String(initJson.paystackPublicKey || '').trim();
-
-            if (!reference || !publicKey || !Number.isFinite(amountKobo) || amountKobo <= 0) {
-                setPlacingOrder(false);
-                toast.error('Invalid checkout session response');
-                return;
-            }
-
-            const PaystackPop = (await import('@paystack/inline-js')).default;
-            const popup = new PaystackPop();
-
-            popup.newTransaction({
-                key: publicKey,
-                email: payerEmail,
-                amount: amountKobo,
-                currency: 'NGN',
-                ref: reference,
-                metadata: {
-                    custom_fields: [
-                        {
-                            display_name: 'Delivery Address',
-                            variable_name: 'delivery_address',
-                            value: defaultAddressLine,
-                        },
-                    ],
-                },
-                onSuccess: async (transaction: { reference?: string }) => {
-                    const {
-                        data: { session: verifySession },
-                    } = await supabase.auth.getSession();
-                    const verifyAccessToken = verifySession?.access_token || session?.access_token;
-                    if (!verifyAccessToken) {
-                        setPlacingOrder(false);
-                        toast.error('Your login session expired. Please login again.');
-                        return;
-                    }
-
-                    const verifyRes = await fetch('/api/paystack/verify-and-create-order', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${verifyAccessToken}`,
-                        },
-                        body: JSON.stringify({
-                            reference: transaction?.reference || reference,
-                        }),
-                    });
-
-                    const raw = await verifyRes.text();
-                    const verifyJson = parseJsonResponse<CheckoutVerifyResponse>(raw, {
-                        error: 'Non-JSON response from order API',
-                        details: raw?.slice(0, 300),
-                    });
-                    if (!raw) {
-                        Object.assign(verifyJson, {
-                            error: 'Non-JSON response from order API',
-                            details: raw?.slice(0, 300),
-                        });
-                    }
-                    setPlacingOrder(false);
-
-                    if (!verifyRes.ok || !verifyJson?.success) {
-                        toast.error(
-                            verifyJson?.error ||
-                            verifyJson?.details ||
-                            `Payment verified but order creation failed (HTTP ${verifyRes.status})`
-                        );
-                        return;
-                    }
-
-                    clearCart();
-                    setPaymentMethod('');
-                    setDeliveryInstructions('');
-                    setVendorInstructions('');
-                    setDeliveryDraft('');
-                    setVendorDraft('');
-                    toast.success('Payment successful. Order created.');
-                    router.push('/my-orders');
-                },
-                onCancel: () => {
-                    setPlacingOrder(false);
-                    toast.error('Payment cancelled');
-                },
-            });
-        } catch (error: unknown) {
-            setPlacingOrder(false);
-            toast.error(error instanceof Error ? error.message : 'Could not start payment');
-        }
     };
 
 
@@ -816,17 +664,6 @@ export default function CartPage() {
                                     </div>
                                     {editingPayment && (
                                         <div className="mb-3 border rounded-md p-3 bg-gray-50 space-y-2">
-                                            <button
-                                                type="button"
-                                                className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'pay_online' ? 'border-primary text-primary bg-orange-50' : 'border-gray-300'
-                                                    }`}
-                                                onClick={() => {
-                                                    setPaymentMethod('pay_online');
-                                                    setEditingPayment(false);
-                                                }}
-                                            >
-                                                Pay online (Paystack)
-                                            </button>
                                             <button
                                                 type="button"
                                                 className={`w-full text-left px-3 py-2 rounded-md border ${paymentMethod === 'bank_transfer' ? 'border-primary text-primary bg-orange-50' : 'border-gray-300'
