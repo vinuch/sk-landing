@@ -17,15 +17,14 @@ import AddressAutocomplete from "./addressAutocomplete";
 import { toast } from "sonner";
 
 const leagueSpartan = League_Spartan({
-    weight: '700', // if single weight, otherwise you use array like [400, 500, 700],
-    style: 'normal', // if single style, otherwise you use array like ['normal', 'italic']
+    weight: '700',
+    style: 'normal',
     subsets: ['latin'],
 })
 export default function Nav() {
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
-    const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
     const [savingAddress, setSavingAddress] = useState(false);
     const { user, loading } = useAuth();
     const { profile, addresses, defaultAddressLine, saveDefaultAddress, loading: profileLoading } = useUserProfile();
@@ -59,17 +58,28 @@ export default function Nav() {
 
         if (result.error) {
             toast.error(result.error);
-            return;
+            return false;
         }
 
         toast.success("Delivery location updated");
-        setLocationPopoverOpen(false);
+        return true;
     };
 
     const locationDisplay = defaultAddressLine || "Set delivery location";
 
-    const LocationPicker = ({ compact = false }: { compact?: boolean }) => (
-        <Popover open={locationPopoverOpen} onOpenChange={setLocationPopoverOpen}>
+    const LocationPicker = ({ compact = false }: { compact?: boolean }) => {
+        const [open, setOpen] = useState(false);
+
+        const onSelectAddress = async (address: string) => {
+            const success = await handleAddressSelect(address);
+
+            if (success) {
+                setOpen(false);
+            }
+        };
+
+        return (
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -86,11 +96,12 @@ export default function Nav() {
                 <AddressAutocomplete
                     value={defaultAddressLine}
                     disabled={profileLoading || savingAddress}
-                    onAddressSelect={handleAddressSelect}
+                    onAddressSelect={onSelectAddress}
                 />
             </PopoverContent>
         </Popover>
-    );
+        );
+    };
 
     const UserMenu = () => (
         <Popover>
@@ -119,11 +130,11 @@ export default function Nav() {
     );
 
     return (
-        <div className={`${leagueSpartan.className} sticky text-black top-0 flex items-center justify-between p-4 z-50 transition-all   ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "bg-white shadow-lg" : "bg-transparent"}`}>
-            <h3 className="font-bold text-xl w-10/12 lg:w-4/12  ">
-                <Link href='/'><div className="flex items-center gap-4">
+        <div className={`${leagueSpartan.className} sticky text-black top-0 flex items-center justify-between gap-3 p-4 z-50 transition-all ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "bg-white shadow-lg" : "bg-transparent"}`}>
+            <h3 className="min-w-0 flex-1 font-bold text-lg sm:text-xl lg:flex-none lg:w-4/12">
+                <Link href='/'><div className="flex items-center gap-3 min-w-0">
                     <Image src={'/logo.png'} alt="logo" width={50} height={50} />
-                    <span>SATELLITE KITCHEN</span>
+                    <span className="truncate text-base leading-tight sm:text-lg lg:text-xl">SATELLITE KITCHEN</span>
                 </div>
                 </Link>
             </h3>
@@ -143,7 +154,6 @@ export default function Nav() {
                 <li>
                     {loading ? null : user && hasOnboarded ? (
                         <div className="flex items-center gap-3">
-                            <LocationPicker />
                             <UserMenu />
                         </div>
                     ) : (
@@ -151,28 +161,22 @@ export default function Nav() {
                     )}
                 </li>
             </ul>
-            {/* Mobile Location Picker - outside drawer for testing */}
-            {!loading && user && hasOnboarded && (
-                <div className="lg:hidden flex-1 mx-2 max-w-[200px]">
-                    <div className="text-left">
-                        <p className="text-[10px] text-gray-500">Delivery Location</p>
-                        <AddressAutocomplete
-                            value={defaultAddressLine}
-                            disabled={profileLoading || savingAddress}
-                            onAddressSelect={handleAddressSelect}
-                        />
-                    </div>
-                </div>
-            )}
+
+            <div className="hidden md:block">
+                <LocationPicker />
+            </div>
+
             <Button className="lg:hidden" variant="ghost" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? (<IoIosClose size={25} />) : (<IoIosMenu size={25} />)}</Button>
 
             {
                 menuOpen ? (
                     <div className="fixed top-16 left-0 lg:hidden h-[calc(100vh-4rem)] w-screen bg-white z-30 text-black flex justify-center overflow-y-auto pb-32">
                         <ul className="flex-co gap-6 text-center mt-12 px-4">
+                            <li className="my-8">
+                                <LocationPicker compact />
+                            </li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/">Home</Link></li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
-                            {/* <li className="my-8">About Us</li> */}
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/find-us">Find Us</Link></li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}>
                                 <Link href="/cart">
@@ -191,9 +195,9 @@ export default function Nav() {
                                     {user ? (
                                         hasOnboarded ? (
                                             <div className="space-y-2">
-                                            <div className="flex justify-center">
-                                                <UserMenu />
-                                            </div>
+                                                <div className="flex justify-center">
+                                                    <UserMenu />
+                                                </div>
                                             </div>
                                         ) : (
                                             <SignupForm />
