@@ -16,10 +16,6 @@ type PlacePrediction = {
     description: string;
 };
 
-type PlacesServiceStatus = {
-    OK: string;
-};
-
 type AutocompleteServiceLike = {
     getPlacePredictions: (
         request: { input: string; componentRestrictions?: { country: string } },
