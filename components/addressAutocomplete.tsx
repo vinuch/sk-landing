@@ -56,7 +56,6 @@ export default function AddressAutocomplete({
     const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [searchStatus, setSearchStatus] = useState<string>('');
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const canSearch = Boolean(scriptReady && window.google?.maps?.places && inputValue.trim().length >= 3);
 
@@ -72,12 +71,9 @@ export default function AddressAutocomplete({
 
     useEffect(() => {
         if (!scriptReady || !window.google?.maps?.places || serviceRef.current) {
-            console.log('Service not created:', { scriptReady, hasGoogle: !!window.google?.maps?.places, hasService: !!serviceRef.current });
             return;
         }
-        console.log('Creating AutocompleteService');
         serviceRef.current = new window.google.maps.places.AutocompleteService();
-        console.log('AutocompleteService created');
     }, [scriptReady]);
 
     useEffect(() => {
@@ -92,15 +88,12 @@ export default function AddressAutocomplete({
     }, []);
 
     useEffect(() => {
-        console.log('Search effect:', { canSearch, hasService: !!serviceRef.current, inputLength: inputValue.trim().length });
         if (!canSearch || !serviceRef.current) {
-            console.log('Cannot search:', { canSearch, hasService: !!serviceRef.current });
             setSuggestions([]);
             return;
         }
 
         setLoading(true);
-        console.log('Searching for:', inputValue.trim());
         const handle = setTimeout(() => {
             serviceRef.current?.getPlacePredictions(
                 {
@@ -109,10 +102,7 @@ export default function AddressAutocomplete({
                 },
                 (predictions: PlacePrediction[] | null, status: string) => {
                     setLoading(false);
-                    setSearchStatus(status);
-                    console.log('Predictions status:', status, 'Results:', predictions?.length || 0);
                     if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
-                        console.log('Search failed or no results');
                         setSuggestions([]);
                         return;
                     }
@@ -143,22 +133,11 @@ export default function AddressAutocomplete({
 
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
-            {/* Debug: Show API status */}
-            <div className="text-[10px] text-gray-500 mb-1">
-                API: {apiKey ? 'SET' : 'MISSING'} | Script: {scriptReady ? 'READY' : 'LOADING'} | Google: {typeof window !== 'undefined' && window.google ? 'YES' : 'NO'} | CanSearch: {canSearch ? 'YES' : 'NO'} | Loading: {loading ? 'YES' : 'NO'} | Suggestions: {suggestions.length} | Status: {searchStatus}
-            </div>
-            
             {apiKey ? (
                 <Script
                     src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`}
                     strategy="afterInteractive"
-                    onLoad={() => {
-                        console.log('Google Maps script loaded');
-                        setScriptReady(true);
-                    }}
-                    onError={(e) => {
-                        console.error('Google Maps script error:', e);
-                    }}
+                    onLoad={() => setScriptReady(true)}
                 />
             ) : (
                 <div className="text-red-500 text-xs">API Key missing</div>
