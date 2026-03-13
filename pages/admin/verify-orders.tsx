@@ -33,6 +33,10 @@ type OrderRow = {
     confirmed_at?: string | null;
     confirmed_by?: string | null;
     order_notes?: unknown;
+    delivery_id?: string | null;
+    rider_name?: string | null;
+    rider_phone?: string | null;
+    tracking_url?: string | null;
 };
 
 type OrderItemRow = {
@@ -67,6 +71,9 @@ const STATUS_FLOW: DeliveryStatus[] = [
     'rider_left',
     'delivered'
 ];
+
+// Store address for pickup
+const STORE_PICKUP_ADDRESS = 'F725+8X6, Satellite Town, Lagos, Nigeria';
 
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
     pending: 'Pending',
@@ -134,6 +141,8 @@ export default function VerifyOrdersPage() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<DeliveryStatus | 'all' | 'bank_pending'>('all');
     const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+    const [bookingOrderId, setBookingOrderId] = useState<number | null>(null);
+    const [bookingLoading, setBookingLoading] = useState(false);
 
     useEffect(() => {
         const savedKey = sessionStorage.getItem('sk_admin_key');
@@ -284,6 +293,71 @@ export default function VerifyOrdersPage() {
         toast.success(`Order #${orderId} updated to ${STATUS_LABELS[json.deliveryStatus || 'pending']}`);
     };
 
+    const handleBookRider = async (order: OrderRow) => {
+        if (!adminKey || !order.delivery_address) return;
+        
+        setBookingLoading(true);
+        setBookingOrderId(order.id);
+
+        // Extract items from order_notes
+        const noteItems = formatOrderNotes(order.order_notes);
+        const items = noteItems.length > 0 
+            ? noteItems.map(item => ({ name: item.name, quantity: item.quantity, price: item.lineTotal || 0 }))
+            : [{ name: 'Food order', quantity: 1, price: order.total_amount || 0 }];
+
+        // Get customer phone from profile
+        const profile = order.user_id ? profilesById[order.user_id] : null;
+        const customerPhone = profile?.phone || '0000000000';
+
+        const res = await fetch('/api/delivery/book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-key': adminKey,
+            },
+            body: JSON.stringify({
+                order_id: order.id,
+                pickup_address: STORE_PICKUP_ADDRESS,
+                delivery_address: order.delivery_address,
+                items: items,
+                customer_phone: customerPhone,
+            }),
+        });
+
+        const text = await res.text();
+        const json = parseJsonResponse<{ 
+            success?: boolean; 
+            error?: string; 
+            delivery_id?: string;
+            rider_name?: string;
+            rider_phone?: string;
+            tracking_url?: string;
+        }>(text, { error: "Invalid response" });
+
+        setBookingLoading(false);
+        setBookingOrderId(null);
+
+        if (!res.ok || !json?.success) {
+            toast.error(json?.error || 'Could not book rider');
+            return;
+        }
+
+        // Update the order in the list with rider details
+        setOrders((prev) => prev.map((o) => 
+            o.id === order.id 
+                ? { 
+                    ...o, 
+                    delivery_id: json.delivery_id || null,
+                    rider_name: json.rider_name || null,
+                    rider_phone: json.rider_phone || null,
+                    tracking_url: json.tracking_url || null,
+                    delivery_tracking: 'rider_arrived' as const,
+                }
+                : o
+        ));
+        toast.success(`Rider booked for Order #${order.id}`);
+    };
+
     const formatOrderNotes = (notes: unknown): Array<{ name: string; quantity: number; lineTotal?: number }> => {
         if (!notes || typeof notes !== 'object') return [];
         const n = notes as Record<string, unknown>;
@@ -358,6 +432,7 @@ export default function VerifyOrdersPage() {
         const currentStatus = getOrderStatus(order);
         const nextStatus = getNextStatus(currentStatus);
         const prevStatus = getPreviousStatus(currentStatus);
+        const canBookRider = order.payment_status && !order.delivery_id && currentStatus !== 'rider_arrived' && currentStatus !== 'rider_left' && currentStatus !== 'delivered';
 
         return (
             <div className={`border rounded-xl p-4 bg-white shadow-sm ${isBankTransferPending ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-200'}`}>
@@ -491,6 +566,31 @@ export default function VerifyOrdersPage() {
                             </div>
                         )}
 
+                        {/* Rider Details */}
+                        {order.delivery_id && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                <p className="text-sm font-medium text-green-800 mb-2">🚚 Rider Assigned</p>
+                                <div className="text-sm text-green-700 space-y-1">
+                                    <p><span className="text-green-600">Delivery ID:</span> {order.delivery_id}</p>
+                                    {order.rider_name && <p><span className="text-green-600">Rider Name:</span> {order.rider_name}</p>}
+                                    {order.rider_phone && <p><span className="text-green-600">Rider Phone:</span> {order.rider_phone}</p>}
+                                    {order.tracking_url && (
+                                        <p>
+                                            <span className="text-green-600">Tracking:</span>{' '}
+                                            <a 
+                                                href={order.tracking_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                Track Delivery
+                                            </a>
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Action Buttons */}
                         <div className="space-y-3 pt-2">
                             {/* Bank Transfer Verification */}
@@ -515,6 +615,21 @@ export default function VerifyOrdersPage() {
                                             {processingOrderId === order.id ? 'Processing...' : '✗ Reject Payment'}
                                         </button>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Book Rider Button */}
+                            {canBookRider && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <p className="text-sm font-medium text-blue-800 mb-2">🛵 Delivery Booking</p>
+                                    <button
+                                        type="button"
+                                        className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                        disabled={bookingLoading && bookingOrderId === order.id}
+                                        onClick={() => handleBookRider(order)}
+                                    >
+                                        {bookingLoading && bookingOrderId === order.id ? 'Booking...' : '📦 Book Rider'}
+                                    </button>
                                 </div>
                             )}
 
