@@ -15,7 +15,9 @@ import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
 import { checkDeliveryRadius, type Coordinates } from '@/lib/distance';
-import { DELIVERY_FEE_NAIRA } from '@/lib/paystackCheckout';
+
+// Store address for pickup
+const STORE_PICKUP_ADDRESS = 'F725+8X6, Satellite Town, Lagos, Nigeria';
 
 type BankAccount = {
     id: number;
@@ -31,6 +33,12 @@ type BankTransferCreateResponse = {
     orderId?: number;
     reference?: string;
     amount?: number;
+};
+
+type DeliveryQuote = {
+    delivery_fee: number;
+    estimated_time: string;
+    available: boolean;
 };
 
 type GeocoderStatusLike = {
@@ -128,13 +136,22 @@ export default function CartPage() {
     const [checkingDistance, setCheckingDistance] = useState(false);
     const [distanceError, setDistanceError] = useState<string | null>(null);
     const [mapsReady, setMapsReady] = useState(false);
+
+    // Delivery quote states
+    const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+    const [fetchingQuote, setFetchingQuote] = useState(false);
+    const [quoteError, setQuoteError] = useState<string | null>(null);
+
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     const totalPrice = items.reduce(
         (acc, item) => acc + (item.subTotal ?? item.subTotal) * item.quantity,
         0
     );
-    const grandTotal = totalPrice + DELIVERY_FEE_NAIRA;
+    
+    // Use Chowdeck delivery fee if available, otherwise 0
+    const deliveryFee = deliveryQuote?.available ? deliveryQuote.delivery_fee : 0;
+    const grandTotal = totalPrice + deliveryFee;
 
     // Fetch bank account details when bank transfer is selected
     useEffect(() => {
@@ -150,6 +167,16 @@ export default function CartPage() {
         }
     }, []);
 
+    // Fetch delivery quote when address changes
+    useEffect(() => {
+        if (defaultAddressLine && items.length > 0) {
+            fetchDeliveryQuote(defaultAddressLine);
+        } else {
+            setDeliveryQuote(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [defaultAddressLine]);
+
     const fetchBankAccount = async () => {
         try {
             const res = await fetch('/api/bank-accounts');
@@ -161,6 +188,54 @@ export default function CartPage() {
             }
         } catch {
             toast.error('Could not load bank account details');
+        }
+    };
+
+    const fetchDeliveryQuote = async (address: string) => {
+        if (!address.trim() || items.length === 0) return;
+
+        setFetchingQuote(true);
+        setQuoteError(null);
+
+        try {
+            const cartItems = items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.list_price,
+            }));
+
+            const res = await fetch('/api/delivery/quote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pickup_address: STORE_PICKUP_ADDRESS,
+                    delivery_address: address.trim(),
+                    items: cartItems,
+                }),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                setQuoteError(json.error || 'Could not fetch delivery quote');
+                setDeliveryQuote(null);
+                return;
+            }
+
+            setDeliveryQuote({
+                delivery_fee: json.delivery_fee,
+                estimated_time: json.estimated_time,
+                available: json.available,
+            });
+
+            if (!json.available) {
+                toast.error('Sorry, we don\'t deliver to this location');
+            }
+        } catch {
+            setQuoteError('Could not fetch delivery quote');
+            setDeliveryQuote(null);
+        } finally {
+            setFetchingQuote(false);
         }
     };
 
@@ -318,7 +393,8 @@ export default function CartPage() {
     const missingPayment = !paymentMethod;
     const missingAddress = !defaultAddressLine;
     const outsideDeliveryRadius = distanceCheck !== null && !distanceCheck.isWithinRadius;
-    const canCheckout = !missingLogin && !missingPayment && !missingAddress && !outsideDeliveryRadius && !checkingDistance;
+    const deliveryNotAvailable = deliveryQuote !== null && !deliveryQuote.available;
+    const canCheckout = !missingLogin && !missingPayment && !missingAddress && !outsideDeliveryRadius && !checkingDistance && !deliveryNotAvailable && !fetchingQuote;
 
     const handleReceiptUpload = async (): Promise<string | null> => {
         if (!receiptFile) return null;
@@ -633,9 +709,23 @@ export default function CartPage() {
                                 <div className="flex justify-between items-center mt-3">
                                     <span className="text-base font-medium text-black">Delivery Fee</span>
                                     <span className="text-base font-medium text-black">
-                                        ₦{DELIVERY_FEE_NAIRA.toLocaleString()}
+                                        {fetchingQuote ? (
+                                            <span className="text-gray-400">Calculating...</span>
+                                        ) : deliveryQuote?.available ? (
+                                            `₦${deliveryQuote.delivery_fee.toLocaleString()}`
+                                        ) : deliveryQuote?.available === false ? (
+                                            <span className="text-red-600">Not available</span>
+                                        ) : (
+                                            <span className="text-gray-400">Enter address</span>
+                                        )}
                                     </span>
                                 </div>
+
+                                {deliveryQuote?.available && deliveryQuote.estimated_time && (
+                                    <p className="text-sm text-green-600 text-right">
+                                        Estimated delivery: {deliveryQuote.estimated_time}
+                                    </p>
+                                )}
 
                                 <div className="flex justify-between items-center mt-3 pt-3 border-t">
                                     <span className="text-lg font-semibold text-black">Total</span>
@@ -813,12 +903,31 @@ export default function CartPage() {
                                     </p>
                                 )}
 
+                                {/* Delivery quote status */}
+                                {fetchingQuote && (
+                                    <p className="text-sm text-blue-600 mb-3">
+                                        Getting delivery quote...
+                                    </p>
+                                )}
+                                {deliveryNotAvailable && (
+                                    <p className="text-sm text-red-600 mb-3">
+                                        ❌ Sorry, we don&apos;t deliver to this location
+                                    </p>
+                                )}
+                                {quoteError && (
+                                    <p className="text-sm text-red-600 mb-3">
+                                        {quoteError}
+                                    </p>
+                                )}
+
                                 {/* 🧹 Actions */}
                                 {!canCheckout && (
                                     <p className="text-sm text-red-600 mb-3">
                                         {missingLogin && 'Login required. '}
                                         {missingPayment && 'Choose payment method. '}
                                         {missingAddress && 'Choose delivery address. '}
+                                        {outsideDeliveryRadius && 'Address outside delivery radius. '}
+                                        {deliveryNotAvailable && 'Delivery not available to this location. '}
                                     </p>
                                 )}
                                 <div className="mt-8 flex flex-col sm:flex-row gap-3">

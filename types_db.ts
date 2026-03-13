@@ -91,6 +91,7 @@ export type Database = {
           confirmed_by: string | null
           created_at: string
           delivery_address: string | null
+          delivery_id: string | null
           delivery_instructions: string | null
           delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking: string | null
@@ -100,7 +101,10 @@ export type Database = {
           payment_method: string | null
           payment_reference: string | null
           payment_status: boolean | null
+          rider_name: string | null
+          rider_phone: string | null
           total_amount: number | null
+          tracking_url: string | null
           user_id: string | null
           vendor_instructions: string | null
         }
@@ -110,6 +114,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
+          delivery_id?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking?: string | null
@@ -119,7 +124,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: boolean | null
+          rider_name?: string | null
+          rider_phone?: string | null
           total_amount?: number | null
+          tracking_url?: string | null
           user_id?: string | null
           vendor_instructions?: string | null
         }
@@ -129,6 +137,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
+          delivery_id?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking?: string | null
@@ -138,7 +147,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: boolean | null
+          rider_name?: string | null
+          rider_phone?: string | null
           total_amount?: number | null
+          tracking_url?: string | null
           user_id?: string | null
           vendor_instructions?: string | null
         }
