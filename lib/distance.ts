@@ -43,12 +43,12 @@ export function calculateDistance(coord1: Coordinates, coord2: Coordinates): num
 /**
  * Check if a delivery address is within the store's delivery radius
  * @param customerCoord Customer's delivery address coordinates
- * @param radiusKm Delivery radius in kilometers (default: 50)
+ * @param radiusKm Delivery radius in kilometers (default: 60)
  * @returns Object with distance and whether it's within radius
  */
 export function checkDeliveryRadius(
   customerCoord: Coordinates,
-  radiusKm: number = 50
+  radiusKm: number = 60
 ): { distance: number; isWithinRadius: boolean } {
   const distance = calculateDistance(STORE_COORDINATES, customerCoord);
   return {

@@ -79,27 +79,27 @@ export default function Nav() {
         };
 
         return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    className={`justify-start text-left ${compact ? "w-full" : "w-72"} h-auto py-2`}
-                >
-                    <div className="min-w-0">
-                        <p className="text-[11px] text-gray-500">Delivery Location</p>
-                        <p className="text-sm text-gray-900 truncate">{locationDisplay}</p>
-                    </div>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" portalled={!compact} className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"} z-50`}>
-                <p className="text-sm font-medium mb-2">Choose delivery location</p>
-                <AddressAutocomplete
-                    value={defaultAddressLine}
-                    disabled={profileLoading || savingAddress}
-                    onAddressSelect={onSelectAddress}
-                />
-            </PopoverContent>
-        </Popover>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        className={`justify-start text-left ${compact ? "w-full" : "w-72"} h-auto py-2`}
+                    >
+                        <div className="min-w-0">
+                            <p className="text-[11px] text-gray-500">Delivery Location</p>
+                            <p className="text-sm text-gray-900 truncate">{locationDisplay}</p>
+                        </div>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" portalled={!compact} className={`${compact ? "w-[22rem] max-w-[90vw]" : "w-80"} z-50`}>
+                    <p className="text-sm font-medium mb-2">Choose delivery location</p>
+                    <AddressAutocomplete
+                        value={defaultAddressLine}
+                        disabled={profileLoading || savingAddress}
+                        onAddressSelect={onSelectAddress}
+                    />
+                </PopoverContent>
+            </Popover>
         );
     };
 
@@ -154,6 +154,8 @@ export default function Nav() {
                 <li>
                     {loading ? null : user && hasOnboarded ? (
                         <div className="flex items-center gap-3">
+                            <LocationPicker />
+
                             <UserMenu />
                         </div>
                     ) : (
@@ -161,10 +163,6 @@ export default function Nav() {
                     )}
                 </li>
             </ul>
-
-            <div className="hidden md:block">
-                <LocationPicker />
-            </div>
 
             <Button className="lg:hidden" variant="ghost" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? (<IoIosClose size={25} />) : (<IoIosMenu size={25} />)}</Button>
 

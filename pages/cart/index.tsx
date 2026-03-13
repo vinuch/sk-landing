@@ -5,6 +5,7 @@ import AddressAutocomplete from '@/components/addressAutocomplete';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import Image from 'next/image';
+import Script from 'next/script';
 import { leagueSpartan } from '../restaurant-menu';
 import { Selections } from '../restaurant-menu/[id]';
 import { useEffect, useState } from 'react';
@@ -13,7 +14,8 @@ import { toast } from 'sonner';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
-import '@/lib/distance';
+import { checkDeliveryRadius, type Coordinates } from '@/lib/distance';
+import { DELIVERY_FEE_NAIRA } from '@/lib/paystackCheckout';
 
 type BankAccount = {
     id: number;
@@ -45,6 +47,39 @@ type BankTransferCreateResponse = {
     reference?: string;
     amount?: number;
 };
+
+type GeocoderStatusLike = {
+    OK: string;
+};
+
+type GeocoderResultLike = {
+    geometry: {
+        location: {
+            lat: () => number;
+            lng: () => number;
+        };
+    };
+};
+
+type GeocoderLike = {
+    geocode: (
+        request: { address: string; region?: string },
+        callback: (results: GeocoderResultLike[] | null, status: string) => void
+    ) => void;
+};
+
+type GoogleMapsLike = {
+    maps?: {
+        Geocoder: new () => GeocoderLike;
+        GeocoderStatus: GeocoderStatusLike;
+    };
+};
+
+declare global {
+    interface Window {
+        google?: GoogleMapsLike;
+    }
+}
 
 function parseJsonResponse<T>(raw: string, fallback: T): T {
     try {
@@ -87,11 +122,14 @@ export default function CartPage() {
     } | null>(null);
     const [checkingDistance, setCheckingDistance] = useState(false);
     const [distanceError, setDistanceError] = useState<string | null>(null);
+    const [mapsReady, setMapsReady] = useState(false);
+    const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     const totalPrice = items.reduce(
         (acc, item) => acc + (item.subTotal ?? item.subTotal) * item.quantity,
         0
     );
+    const grandTotal = totalPrice + DELIVERY_FEE_NAIRA;
 
     // Fetch bank account details when bank transfer is selected
     useEffect(() => {
@@ -100,6 +138,12 @@ export default function CartPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [paymentMethod]);
+
+    useEffect(() => {
+        if (window.google?.maps?.Geocoder) {
+            setMapsReady(true);
+        }
+    }, []);
 
     const fetchBankAccount = async () => {
         try {
@@ -179,9 +223,29 @@ export default function CartPage() {
 
         toast.success('Delivery address updated');
         setEditingAddress(false);
-        
-        // Check distance to store
-        await checkAddressDistance(address);
+    };
+
+    const geocodeAddressInBrowser = async (address: string): Promise<Coordinates | null> => {
+        if (!window.google?.maps?.Geocoder) {
+            return null;
+        }
+
+        const geocoder = new window.google.maps.Geocoder();
+
+        return new Promise((resolve) => {
+            geocoder.geocode({ address, region: 'ng' }, (results, status) => {
+                if (status !== window.google?.maps?.GeocoderStatus.OK || !results?.length) {
+                    resolve(null);
+                    return;
+                }
+
+                const location = results[0].geometry.location;
+                resolve({
+                    lat: location.lat(),
+                    lng: location.lng(),
+                });
+            });
+        });
     };
 
     const checkAddressDistance = async (address: string) => {
@@ -191,6 +255,20 @@ export default function CartPage() {
         setDistanceError(null);
         
         try {
+            const browserCoordinates = mapsReady ? await geocodeAddressInBrowser(address.trim()) : null;
+
+            if (browserCoordinates) {
+                const { distance, isWithinRadius } = checkDeliveryRadius(browserCoordinates, 60);
+
+                setDistanceCheck({ distance, isWithinRadius });
+
+                if (!isWithinRadius) {
+                    toast.error(`We don't deliver here yet. Coming soon! (${distance} km from store)`);
+                }
+
+                return;
+            }
+
             const res = await fetch('/api/distance-check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -222,11 +300,15 @@ export default function CartPage() {
 
     // Check distance when default address is loaded
     useEffect(() => {
-        if (defaultAddressLine && !distanceCheck && !checkingDistance) {
-            checkAddressDistance(defaultAddressLine);
+        if (!defaultAddressLine) {
+            setDistanceCheck(null);
+            setDistanceError(null);
+            return;
         }
+
+        checkAddressDistance(defaultAddressLine);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [defaultAddressLine]);
+    }, [defaultAddressLine, mapsReady]);
 
     const missingLogin = !user?.id;
     const missingPayment = !paymentMethod;
@@ -527,7 +609,13 @@ export default function CartPage() {
     if (items.length === 0 && !showBankDetails) {
         return (
             <Layout>
-
+                {googleMapsApiKey ? (
+                    <Script
+                        src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`}
+                        strategy="afterInteractive"
+                        onLoad={() => setMapsReady(true)}
+                    />
+                ) : null}
                 <div className="min-h-screen flex flex-col items-center justify-center bg-primary p-6">
                     <div className="absolute bg-white/60 h-full w-screen top  z-10 left-0"></div>
 
@@ -550,6 +638,13 @@ export default function CartPage() {
 
     return (
         <Layout>
+            {googleMapsApiKey ? (
+                <Script
+                    src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`}
+                    strategy="afterInteractive"
+                    onLoad={() => setMapsReady(true)}
+                />
+            ) : null}
             <div className={`bg-primary min-h-screen bg-primary p-6 md:p-12 ${leagueSpartan.className}`}>
                 <div className="absolute bg-white/60 h-full w-screen top -mt-12 z-10 left-0"></div>
                 <div className="relative z-20">
@@ -562,7 +657,7 @@ export default function CartPage() {
                         {showBankDetails && bankAccount && (
                             <div className="mb-6 border-2 border-primary rounded-xl p-6 bg-orange-50">
                                 <h3 className="text-xl font-semibold text-black mb-4">Bank Transfer Payment</h3>
-                                <p className="text-gray-700 mb-4">Please transfer <strong>₦{totalPrice.toLocaleString()}</strong> to the account below:</p>
+                                <p className="text-gray-700 mb-4">Please transfer <strong>₦{grandTotal.toLocaleString()}</strong> to the account below:</p>
                                 
                                 <div className="bg-white rounded-lg p-4 mb-4 border">
                                     <div className="grid grid-cols-1 gap-2 text-sm">
@@ -627,31 +722,31 @@ export default function CartPage() {
                                     {items.map((item) => (
                                         <div
                                             key={item.id}
-                                            className="flex justify-between items-center py-4"
+                                            className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             {/* 🥣 Left: Item Info */}
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                                                 <Image
                                                     src={`/${item.name?.split(' ')[0].toLowerCase()}.png`}
                                                     alt={item.name || 'Menu item'}
                                                     width={64}
                                                     height={64}
-                                                    className="w-16 h-16 rounded-lg object-cover shadow-sm"
+                                                    className="h-16 w-16 shrink-0 rounded-lg object-cover shadow-sm sm:h-20 sm:w-20"
                                                 />
-                                                <div>
-                                                    <p className="font-medium text-black">{item.name}</p>
-                                                    <p className="font-medium text-black w-64">{formatSelectionsDescription(item.selections)}</p>
-                                                    <p className="text-gray-500 text-sm">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-base font-semibold leading-tight text-black sm:text-lg">{item.name}</p>
+                                                    <p className="mt-1 break-words text-sm font-medium leading-6 text-black sm:max-w-md">{formatSelectionsDescription(item.selections)}</p>
+                                                    <p className="mt-2 text-sm font-semibold text-gray-600">
                                                         ₦{(item.subTotal ?? item.subTotal).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
 
                                             {/* ⚙️ Right: Quantity Controls */}
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex justify-end sm:justify-start">
                                                 <button
                                                     onClick={() => removeItem(item.id)}
-                                                    className="ml-3 text-red-500 hover:text-red-700 text-sm"
+                                                    className="text-sm font-semibold text-red-500 transition-colors hover:text-red-700"
                                                 >
                                                     Remove
                                                 </button>
@@ -662,9 +757,23 @@ export default function CartPage() {
 
                                 {/* 🧾 Total */}
                                 <div className="flex justify-between items-center mt-6 pt-6 border-t">
+                                    <span className="text-base font-medium text-black">Subtotal</span>
+                                    <span className="text-base font-medium text-black">
+                                        ₦{totalPrice.toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center mt-3">
+                                    <span className="text-base font-medium text-black">Delivery Fee</span>
+                                    <span className="text-base font-medium text-black">
+                                        ₦{DELIVERY_FEE_NAIRA.toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center mt-3 pt-3 border-t">
                                     <span className="text-lg font-semibold text-black">Total</span>
                                     <span className="text-lg font-semibold text-green-600">
-                                        ₦{totalPrice.toLocaleString()}
+                                        ₦{grandTotal.toLocaleString()}
                                     </span>
                                 </div>
 
@@ -839,7 +948,7 @@ export default function CartPage() {
                                 )}
                                 {outsideDeliveryRadius && (
                                     <p className="text-sm text-red-600 mb-3">
-                                        ❌ We don&apos;t deliver here yet. Coming soon! ({distanceCheck?.distance} km from store, max 50 km)
+                                        ❌ We don&apos;t deliver here yet. Coming soon! ({distanceCheck?.distance} km from store, max 60 km)
                                     </p>
                                 )}
                                 {distanceError && !outsideDeliveryRadius && (

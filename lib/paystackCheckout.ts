@@ -13,6 +13,8 @@ export type TrustedCheckoutItem = {
     lineTotal: number;
 };
 
+export const DELIVERY_FEE_NAIRA = 1000;
+
 const ODOO_URL = process.env.ODOO_URL;
 const ODOO_DB = process.env.ODOO_DB;
 const ODOO_USER = process.env.ODOO_USER;
@@ -124,7 +126,12 @@ async function fetchOdooProductsByIds(productIds: number[]): Promise<OdooProduct
 
 export async function buildTrustedCheckout(items: RequestedCheckoutItem[]) {
     if (items.length === 0) {
-        return { trustedItems: [] as TrustedCheckoutItem[], amountKobo: 0 };
+        return {
+            trustedItems: [] as TrustedCheckoutItem[],
+            subtotalNaira: 0,
+            deliveryFeeNaira: DELIVERY_FEE_NAIRA,
+            amountKobo: 0,
+        };
     }
 
     const numericIds = items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id) && id > 0);
@@ -155,9 +162,12 @@ export async function buildTrustedCheckout(items: RequestedCheckoutItem[]) {
         };
     });
 
-    const total = trustedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const subtotalNaira = trustedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const totalNaira = subtotalNaira + DELIVERY_FEE_NAIRA;
     return {
         trustedItems,
-        amountKobo: Math.round(total * 100),
+        subtotalNaira,
+        deliveryFeeNaira: DELIVERY_FEE_NAIRA,
+        amountKobo: Math.round(totalNaira * 100),
     };
 }

@@ -68,8 +68,8 @@ export default async function handler(
     });
   }
 
-  // Check if within delivery radius (50km)
-  const { distance, isWithinRadius } = checkDeliveryRadius(coordinates, 50);
+  // Check if within delivery radius (60km)
+  const { distance, isWithinRadius } = checkDeliveryRadius(coordinates, 60);
 
   return res.status(200).json({
     success: true,
