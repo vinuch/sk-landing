@@ -86,12 +86,17 @@ export type Database = {
       }
       Orders: {
         Row: {
+          bank_receipt_url: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string
           delivery_address: string | null
           delivery_instructions: string | null
           delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking: string | null
           id: number
           order_notes: Json | null
+          paid_at: string | null
           payment_method: string | null
           payment_reference: string | null
           payment_status: boolean | null
@@ -100,12 +105,17 @@ export type Database = {
           vendor_instructions: string | null
         }
         Insert: {
+          bank_receipt_url?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking?: string | null
           id?: number
           order_notes?: Json | null
+          paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: boolean | null
@@ -114,18 +124,53 @@ export type Database = {
           vendor_instructions?: string | null
         }
         Update: {
+          bank_receipt_url?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
+          delivery_tracking?: string | null
           id?: number
           order_notes?: Json | null
+          paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           payment_status?: boolean | null
           total_amount?: number | null
           user_id?: string | null
           vendor_instructions?: string | null
+        }
+        Relationships: []
+      }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at: string
+          id: number
+          is_active: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          created_at?: string
+          id?: number
+          is_active?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -272,7 +317,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      Delivery_status: "preparing" | "packaging" | "with_rider" | "delivered"
+      Delivery_status: "pending" | "awaiting_confirmation" | "confirmed" | "preparing" | "ready" | "rider_arrived" | "rider_left" | "delivered"
       Food_type: "soup" | "swallow" | "protein"
     }
     CompositeTypes: {

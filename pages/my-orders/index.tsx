@@ -16,6 +16,9 @@ type OrderRow = {
     payment_reference?: string | null;
     delivery_address?: string | null;
     delivery_status?: "preparing" | "packaging" | "with_rider" | "delivered" | null;
+    delivery_tracking?: string | null;
+    bank_receipt_url?: string | null;
+    paid_at?: string | null;
 };
 
 type OrderItemRow = {
@@ -61,7 +64,7 @@ export default function MyOrdersPage() {
 
             const { data, error } = await supabase
                 .from('Orders')
-                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status')
+                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, delivery_tracking, bank_receipt_url, paid_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -110,18 +113,41 @@ export default function MyOrdersPage() {
         [orders]
     );
 
+    const getPaymentStatusDisplay = (order: OrderRow) => {
+        if (order.payment_status === true) {
+            return { label: 'Paid', className: 'bg-green-100 text-green-700' };
+        }
+        // Has receipt but not confirmed yet
+        if (order.bank_receipt_url && order.paid_at) {
+            return { label: 'Awaiting Verification', className: 'bg-orange-100 text-orange-700' };
+        }
+        return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' };
+    };
+
     const statusLabelMap: Record<string, string> = {
+        pending: 'Order received',
+        awaiting_confirmation: 'Awaiting payment confirmation',
+        confirmed: 'Payment confirmed',
         preparing: 'Still preparing',
+        ready: 'Ready for pickup',
+        rider_arrived: 'Rider has arrived',
+        rider_left: 'Rider on the way',
+        delivered: 'Delivered',
         packaging: 'Packaging',
         with_rider: 'With rider, on the way to you',
-        delivered: 'Delivered',
     };
 
     const statusBadgeClassMap: Record<string, string> = {
+        pending: 'bg-gray-100 text-gray-700',
+        awaiting_confirmation: 'bg-orange-100 text-orange-700',
+        confirmed: 'bg-blue-100 text-blue-700',
         preparing: 'bg-yellow-100 text-yellow-700',
+        ready: 'bg-purple-100 text-purple-700',
+        rider_arrived: 'bg-indigo-100 text-indigo-700',
+        rider_left: 'bg-cyan-100 text-cyan-700',
+        delivered: 'bg-green-100 text-green-700',
         packaging: 'bg-orange-100 text-orange-700',
         with_rider: 'bg-blue-100 text-blue-700',
-        delivered: 'bg-green-100 text-green-700',
     };
 
     if (!authLoading && !user) {
@@ -143,9 +169,8 @@ export default function MyOrdersPage() {
 
     return (
         <Layout>
-            <div className={`bg-primary min-h-screen p-6 md:p-12 ${leagueSpartan.className}`}>
-                <div className="absolute bg-white/60 h-full w-screen top -mt-12 z-10 left-0"></div>
-                <div className="relative z-20">
+            <div className={`bg-primary min-h-screen ${leagueSpartan.className}`}>
+                <div className="min-h-screen bg-white/60 p-6 md:p-12">
                     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-10">
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                             <h2 className="text-black text-3xl md:text-4xl">My Orders</h2>
@@ -172,19 +197,19 @@ export default function MyOrdersPage() {
                                         <div className="flex flex-wrap justify-between gap-3 items-center">
                                             <p className="text-black font-semibold">Order #{order.id}</p>
                                             <div className="flex items-center gap-2">
+                                                {(() => {
+                                                    const status = getPaymentStatusDisplay(order);
+                                                    return (
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${status.className}`}>
+                                                            {status.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                                 <span
-                                                    className={`text-xs px-2 py-1 rounded-full ${order.payment_status
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-yellow-100 text-yellow-700'
+                                                    className={`text-xs px-2 py-1 rounded-full ${statusBadgeClassMap[order.delivery_tracking || order.delivery_status || 'pending'] || 'bg-gray-100 text-gray-700'
                                                         }`}
                                                 >
-                                                    {order.payment_status ? 'Paid' : 'Pending'}
-                                                </span>
-                                                <span
-                                                    className={`text-xs px-2 py-1 rounded-full ${statusBadgeClassMap[order.delivery_status || 'preparing'] || 'bg-gray-100 text-gray-700'
-                                                        }`}
-                                                >
-                                                    {statusLabelMap[order.delivery_status || 'preparing'] || 'Still preparing'}
+                                                    {statusLabelMap[order.delivery_tracking || order.delivery_status || 'pending'] || 'Order received'}
                                                 </span>
                                             </div>
                                         </div>
