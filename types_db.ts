@@ -91,6 +91,7 @@ export type Database = {
           confirmed_by: string | null
           created_at: string
           delivery_address: string | null
+          delivery_fee: number | null
           delivery_id: string | null
           delivery_instructions: string | null
           delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
@@ -114,6 +115,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
+          delivery_fee?: number | null
           delivery_id?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
@@ -137,6 +139,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           delivery_address?: string | null
+          delivery_fee?: number | null
           delivery_id?: string | null
           delivery_instructions?: string | null
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null

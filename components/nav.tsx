@@ -1,4 +1,4 @@
-import { FaWhatsapp } from "react-icons/fa";
+import { MdDeliveryDining } from "react-icons/md";
 import { Button } from "./ui/button";
 import { IoIosClose, IoIosMenu } from "react-icons/io";
 import { useEffect, useState } from "react";
@@ -187,7 +187,7 @@ export default function Nav() {
                                 </Link>
                             </li>
                             <li className="my-8 hover:underline hover:text-primary cursor-pointer" onClick={() => setMenuOpen(false)}><Link href="/my-orders">My Orders</Link></li>
-                            <li className="my-8" onClick={() => setMenuOpen(false)}><a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"><Button className="bg-primary-green px-4 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a></li>
+                            <li className="my-8" onClick={() => setMenuOpen(false)}><a href="https://store.chowdeck.com/amuwo-odofin-1/restaurants/satellite-kitchen9pt53j" target="_blank" rel="noopener noreferrer"><Button className="bg-primary-green px-4 py-6 text-base my-3"><MdDeliveryDining size={25} className="mx-2" /> Order on Chowdeck</Button></a></li>
                             {!loading && (
                                 <li className="my-8">
                                     {user ? (

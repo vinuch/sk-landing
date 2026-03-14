@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button } from "@/components/ui/button"
-import { FaPhoneAlt, FaWhatsapp } from "react-icons/fa";
+import { FaPhoneAlt } from "react-icons/fa";
+import { MdDeliveryDining } from "react-icons/md";
 import Link from 'next/link';
 
 export default function Footer() {
@@ -12,7 +13,7 @@ export default function Footer() {
                     <p className="my-2 font-medium">Proud to serve</p>
                     <p className="my-2">contact@satellitekitchen.ng</p>
                     <p className="my-2 flex items-center gap-2"> <FaPhoneAlt /> <span>+234 08034746311</span></p>
-                    <a href={`https://api.whatsapp.com/send?phone=2347032189083&text=Hello%2C%20I%20would%20like%20to%20make%20an%20order`} target="_blank" rel="noopener noreferrer"> <Button className="bg-primary-green px-8 py-6 text-base my-3"><FaWhatsapp size={25} className="mx-2" /> Order on Whatsapp</Button></a>
+                    <a href="https://store.chowdeck.com/amuwo-odofin-1/restaurants/satellite-kitchen9pt53j" target="_blank" rel="noopener noreferrer"> <Button className="bg-primary-green px-8 py-6 text-base my-3"><MdDeliveryDining size={25} className="mx-2" /> Order on Chowdeck</Button></a>
                 </div>
                 <div className="w-full md:w-3/12">
                     <ul>

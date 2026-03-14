@@ -26,6 +26,7 @@ type OrderRow = {
     delivery_status?: DeliveryStatus | null;
     delivery_tracking?: DeliveryStatus | null;
     delivery_address?: string | null;
+    delivery_fee?: number | null;
     delivery_instructions?: string | null;
     vendor_instructions?: string | null;
     bank_receipt_url?: string | null;
@@ -534,6 +535,9 @@ export default function VerifyOrdersPage() {
                                 <p><span className="text-gray-500">Method:</span> {order.payment_method || 'N/A'}</p>
                                 <p><span className="text-gray-500">Reference:</span> {order.payment_reference || 'N/A'}</p>
                                 <p><span className="text-gray-500">Status:</span> {order.payment_status ? '✅ Paid' : '⏳ Pending'}</p>
+                                {order.delivery_fee !== null && order.delivery_fee !== undefined && (
+                                    <p><span className="text-gray-500">Delivery Fee:</span> {formatCurrency(order.delivery_fee)}</p>
+                                )}
                                 {order.paid_at && <p><span className="text-gray-500">Paid At:</span> {new Date(order.paid_at).toLocaleString()}</p>}
                                 {order.confirmed_at && <p><span className="text-gray-500">Confirmed At:</span> {new Date(order.confirmed_at).toLocaleString()}</p>}
                             </div>
