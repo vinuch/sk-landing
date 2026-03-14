@@ -202,6 +202,7 @@ async function getChowdeckDeliveryFee(
       getNumericValue(data.pricing?.amount) ??
       0;
 
+    // Chowdeck returns fee in kobo, convert to Naira
     const deliveryFee = deliveryFeeKobo / 100;
 
     const estimatedTime =
@@ -209,14 +210,11 @@ async function getChowdeckDeliveryFee(
       (typeof data.eta === 'string' && data.eta) ||
       (typeof data.data?.estimated_time === 'string' && data.data.estimated_time) ||
       (typeof data.data?.eta === 'string' && data.data.eta) ||
-      '';
-    
-    // Chowdeck returns fee in kobo, convert to Naira
-    const feeInKobo = data.delivery_fee || data.fee || 0;
+      '30-45 mins';
     
     return {
-      deliveryFee: feeInKobo / 100,
-      estimatedTime: data.estimated_time || data.eta || '30-45 mins',
+      deliveryFee,
+      estimatedTime,
       available: data.available !== false,
     };
   } catch (error) {
