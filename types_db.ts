@@ -97,6 +97,7 @@ export type Database = {
           delivery_status: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking: string | null
           id: number
+          items_subtotal: number | null
           order_notes: Json | null
           paid_at: string | null
           payment_method: string | null
