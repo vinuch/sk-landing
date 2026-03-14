@@ -90,12 +90,6 @@ type GoogleMapsLike = {
     };
 };
 
-declare global {
-    interface Window {
-        google?: GoogleMapsLike;
-    }
-}
-
 const STATUS_FLOW: DeliveryStatus[] = [
     'pending',
     'awaiting_confirmation',
@@ -174,6 +168,8 @@ function calculateSubtotalFromNotes(items: Array<{ name: string; quantity: numbe
 }
 
 export default function VerifyOrdersPage() {
+    const googleMaps =
+        typeof window !== 'undefined' ? (window.google as GoogleMapsLike | undefined) : undefined;
     const [adminKey, setAdminKey] = useState('');
     const [authed, setAuthed] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -199,15 +195,15 @@ export default function VerifyOrdersPage() {
     }, []);
 
     const geocodeAddressInBrowser = async (address: string): Promise<Coordinates | null> => {
-        if (!window.google?.maps?.Geocoder) {
+        if (!googleMaps?.maps?.Geocoder) {
             return null;
         }
 
-        const geocoder = new window.google.maps.Geocoder();
+        const geocoder = new googleMaps.maps.Geocoder();
 
         return new Promise((resolve) => {
             geocoder.geocode({ address, region: 'ng' }, (results, status) => {
-                if (status !== window.google?.maps?.GeocoderStatus.OK || !results?.length) {
+                if (status !== googleMaps?.maps?.GeocoderStatus.OK || !results?.length) {
                     resolve(null);
                     return;
                 }

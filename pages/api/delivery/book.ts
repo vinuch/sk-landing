@@ -353,6 +353,13 @@ export default async function handler(
     });
   }
 
+  if ('error' in result) {
+    return res.status(500).json({
+      success: false,
+      error: 'Could not book delivery with Chowdeck. Please try again later.',
+    });
+  }
+
   // Update order with delivery details
   const { error: updateError } = await supabaseAdmin
     .from('Orders')
