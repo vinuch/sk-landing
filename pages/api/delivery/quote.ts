@@ -80,8 +80,11 @@ async function getChowdeckDeliveryFee(
 
     const data = await response.json();
     
+    // Chowdeck returns fee in kobo, convert to Naira
+    const feeInKobo = data.delivery_fee || data.fee || 0;
+    
     return {
-      deliveryFee: data.delivery_fee || data.fee || 0,
+      deliveryFee: feeInKobo / 100,
       estimatedTime: data.estimated_time || data.eta || '30-45 mins',
       available: data.available !== false,
     };
