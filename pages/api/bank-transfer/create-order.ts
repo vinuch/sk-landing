@@ -11,6 +11,7 @@ type InitiateBankTransferBody = {
     deliveryAddress?: string;
     deliveryInstructions?: string;
     vendorInstructions?: string;
+    deliveryFee?: number;
     items?: unknown;
 };
 
@@ -64,6 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             delivery_address: body.deliveryAddress?.trim() || null,
             delivery_instructions: body.deliveryInstructions?.trim() || null,
             vendor_instructions: body.vendorInstructions?.trim() || null,
+            delivery_fee: body.deliveryFee ?? null,
             delivery_status: "preparing" as const,
             order_notes: {
                 items: trustedItems,

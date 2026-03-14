@@ -529,6 +529,7 @@ export default function CartPage() {
                         deliveryAddress: defaultAddressLine,
                         deliveryInstructions,
                         vendorInstructions,
+                        deliveryFee: deliveryQuote?.available ? deliveryQuote.delivery_fee : 0,
                         items: items.map((item) => ({
                             id: item.productRef || item.id,
                             quantity: item.quantity,

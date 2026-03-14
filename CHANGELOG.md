@@ -5,6 +5,20 @@ All notable changes to the Satellite Kitchen website will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Delivery Fee Persistence**
+  - Added `delivery_fee` column to Orders table (numeric)
+  - Updated `/api/bank-transfer/create-order` to save delivery_fee from cart
+  - Updated Cart page to pass delivery_fee when creating orders
+  - Updated Admin Verify Orders page to display saved delivery_fee
+  - Created SQL migration: `migrations/20260314_add_delivery_fee.sql`
+
+### Changed
+- **Order Buttons Updated**
+  - Changed "Order on WhatsApp" → "Order on Chowdeck" in footer and nav
+  - Updated link to Chowdeck store: `https://store.chowdeck.com/amuwo-odofin-1/restaurants/satellite-kitchen9pt53j`
+  - Added `target="_blank" rel="noopener noreferrer"` for security
+
+### Added
 - **Chowdeck Delivery Integration**
   - New API route `/api/delivery/quote` - POST endpoint to get delivery fee quotes from Chowdeck
     - Accepts: pickup_address, delivery_address, items
