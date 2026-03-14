@@ -23,6 +23,25 @@ type AutocompleteServiceLike = {
     ) => void;
 };
 
+type PlacesServiceStatusLike = {
+    OK: string;
+};
+
+type GoogleMapsLike = {
+    maps?: {
+        places?: {
+            AutocompleteService: new () => AutocompleteServiceLike;
+            PlacesServiceStatus: PlacesServiceStatusLike;
+        };
+    };
+};
+
+declare global {
+    interface Window {
+        google?: GoogleMapsLike;
+    }
+}
+
 export default function AddressAutocomplete({
     value = "",
     disabled,

@@ -143,6 +143,7 @@ export default function Nav() {
                 <li className={`hover:underline  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/restaurant-menu">Restaurant Menu</Link></li>
                 {/* <li>About Us</li> */}
                 <li className={`hover:underline  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/find-us">Find Us</Link></li>
+                <li className={`hover:underline  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/my-orders">My Orders</Link></li>
                 <li className={`hover:underline relative  cursor-pointer ${!['/'].includes(router.pathname) || isScrolled || menuOpen ? "hover:text-primary" : "hover:text-white"}`}><Link href="/cart">
                     Cart
                     {totalItems > 0 && (

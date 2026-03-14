@@ -43,6 +43,10 @@ function formatDate(value: string) {
     }
 }
 
+function calculateSubtotal(items: OrderItemRow[]) {
+    return items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
+}
+
 export default function MyOrdersPage() {
     const { user, loading: authLoading } = useAuth();
     const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -192,7 +196,13 @@ export default function MyOrdersPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {orders.map((order) => (
+                                {orders.map((order) => {
+                                    const orderItems = orderItemsByOrderId[order.id] || [];
+                                    const subtotal = calculateSubtotal(orderItems);
+                                    const total = Number(order.total_amount || 0);
+                                    const deliveryFee = Math.max(0, total - subtotal);
+
+                                    return (
                                     <div key={order.id} className="border rounded-xl p-4 md:p-5 bg-gray-50">
                                         <div className="flex flex-wrap justify-between gap-3 items-center">
                                             <p className="text-black font-semibold">Order #{order.id}</p>
@@ -216,7 +226,7 @@ export default function MyOrdersPage() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm text-gray-700">
                                             <p><span className="font-medium text-black">Date:</span> {formatDate(order.created_at)}</p>
-                                            <p><span className="font-medium text-black">Amount:</span> {formatCurrency(order.total_amount)}</p>
+                                            <p><span className="font-medium text-black">Total:</span> {formatCurrency(order.total_amount)}</p>
                                             <p><span className="font-medium text-black">Payment:</span> {order.payment_method || 'N/A'}</p>
                                             <p><span className="font-medium text-black">Reference:</span> {order.payment_reference || 'N/A'}</p>
                                         </div>
@@ -229,11 +239,11 @@ export default function MyOrdersPage() {
 
                                         <div className="mt-3">
                                             <p className="text-sm font-medium text-black mb-2">Items</p>
-                                            {(orderItemsByOrderId[order.id] || []).length === 0 ? (
+                                            {orderItems.length === 0 ? (
                                                 <p className="text-sm text-gray-600">No item lines found.</p>
                                             ) : (
                                                 <div className="space-y-1">
-                                                    {(orderItemsByOrderId[order.id] || []).map((item) => (
+                                                    {orderItems.map((item) => (
                                                         <div key={item.id} className="text-sm text-gray-700 flex justify-between gap-3">
                                                             <span>
                                                                 {(item.quantity || 1)}x {item.item_name || 'Item'}
@@ -244,8 +254,23 @@ export default function MyOrdersPage() {
                                                 </div>
                                             )}
                                         </div>
+
+                                        <div className="mt-3 border-t pt-3 text-sm text-gray-700 space-y-1">
+                                            <div className="flex justify-between gap-3">
+                                                <span>Subtotal</span>
+                                                <span>{formatCurrency(subtotal)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-3">
+                                                <span>Delivery Fee</span>
+                                                <span>{formatCurrency(deliveryFee)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-3 font-medium text-black">
+                                                <span>Total</span>
+                                                <span>{formatCurrency(order.total_amount)}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         )}
                     </div>

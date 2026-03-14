@@ -5,7 +5,15 @@ import { leagueSpartan } from '../restaurant-menu';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-type DeliveryStatus = 'preparing' | 'packaging' | 'with_rider' | 'delivered';
+type DeliveryStatus =
+    | 'pending'
+    | 'awaiting_confirmation'
+    | 'confirmed'
+    | 'preparing'
+    | 'ready'
+    | 'rider_arrived'
+    | 'rider_left'
+    | 'delivered';
 
 type OrderRow = {
     id: number;
@@ -16,6 +24,7 @@ type OrderRow = {
     payment_method?: string | null;
     payment_reference?: string | null;
     delivery_status?: DeliveryStatus | null;
+    delivery_tracking?: DeliveryStatus | null;
     delivery_address?: string | null;
     delivery_instructions?: string | null;
     vendor_instructions?: string | null;
@@ -53,18 +62,35 @@ function parseJsonResponse<T>(raw: string, fallback: T): T {
     }
 }
 
-const statuses: DeliveryStatus[] = ['preparing', 'packaging', 'with_rider', 'delivered'];
+const statuses: DeliveryStatus[] = [
+    'pending',
+    'awaiting_confirmation',
+    'confirmed',
+    'preparing',
+    'ready',
+    'rider_arrived',
+    'rider_left',
+    'delivered',
+];
 
 const statusLabel: Record<DeliveryStatus, string> = {
-    preparing: 'Still preparing',
-    packaging: 'Packaging',
-    with_rider: 'With rider',
+    pending: 'Pending',
+    awaiting_confirmation: 'Awaiting Confirmation',
+    confirmed: 'Confirmed',
+    preparing: 'Preparing',
+    ready: 'Ready for Pickup',
+    rider_arrived: 'Rider Arrived',
+    rider_left: 'Rider Left',
     delivered: 'Delivered',
 };
 
 function formatCurrency(value?: number | null) {
     if (value === null || value === undefined) return 'N/A';
     return `₦${Number(value).toLocaleString()}`;
+}
+
+function calculateSubtotal(items: OrderItemRow[]) {
+    return items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
 }
 
 export default function AdminOrdersPage() {
@@ -81,6 +107,7 @@ export default function AdminOrdersPage() {
         if (savedKey) {
             setAdminKey(savedKey);
             setAuthed(true);
+            fetchOrders(savedKey);
         }
     }, []);
 
@@ -165,7 +192,11 @@ export default function AdminOrdersPage() {
         setOrders((prev) =>
             prev.map((order) =>
                 order.id === orderId
-                    ? { ...order, delivery_status: json.deliveryStatus as DeliveryStatus }
+                    ? {
+                        ...order,
+                        delivery_status: json.deliveryStatus as DeliveryStatus,
+                        delivery_tracking: json.deliveryStatus as DeliveryStatus,
+                      }
                     : order
             )
         );
@@ -174,8 +205,8 @@ export default function AdminOrdersPage() {
 
     return (
         <Layout>
-            <div className={`bg-primary min-h-screen p-6 md:p-12 ${leagueSpartan.className}`}>
-                <div className="absolute bg-white/60 h-full w-screen top -mt-12 z-10 left-0"></div>
+            <div className={`relative overflow-x-hidden bg-primary min-h-screen p-6 md:p-12 ${leagueSpartan.className}`}>
+                <div className="absolute inset-0 z-10 bg-white/60"></div>
                 <div className="relative z-20 max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-10">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                         <h2 className="text-black text-3xl md:text-4xl">Admin Orders</h2>
@@ -231,8 +262,11 @@ export default function AdminOrdersPage() {
                         <div className="space-y-4">
                             {orders.map((order) => {
                                 const profile = order.user_id ? profilesById[order.user_id] : null;
-                                const orderStatus = (order.delivery_status || 'preparing') as DeliveryStatus;
+                                const orderStatus = (order.delivery_tracking || order.delivery_status || 'pending') as DeliveryStatus;
                                 const items = itemsByOrder[order.id] || [];
+                                const subtotal = calculateSubtotal(items);
+                                const total = Number(order.total_amount || 0);
+                                const deliveryFee = Math.max(0, total - subtotal);
 
                                 return (
                                     <div key={order.id} className="border rounded-xl p-4 md:p-5 bg-gray-50">
@@ -250,7 +284,7 @@ export default function AdminOrdersPage() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm text-gray-700">
                                             <p><span className="font-medium text-black">Date:</span> {new Date(order.created_at).toLocaleString()}</p>
-                                            <p><span className="font-medium text-black">Amount:</span> {formatCurrency(order.total_amount)}</p>
+                                            <p><span className="font-medium text-black">Total:</span> {formatCurrency(order.total_amount)}</p>
                                             <p><span className="font-medium text-black">Payment:</span> {order.payment_method || 'N/A'}</p>
                                             <p><span className="font-medium text-black">Reference:</span> {order.payment_reference || 'N/A'}</p>
                                             <p><span className="font-medium text-black">Customer:</span> {profile?.full_name || order.user_id || 'N/A'}</p>
@@ -289,6 +323,21 @@ export default function AdminOrdersPage() {
                                                     ))}
                                                 </div>
                                             )}
+                                        </div>
+
+                                        <div className="mt-3 border-t pt-3 text-sm text-gray-700 space-y-1">
+                                            <div className="flex justify-between gap-3">
+                                                <span>Subtotal</span>
+                                                <span>{formatCurrency(subtotal)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-3">
+                                                <span>Delivery Fee</span>
+                                                <span>{formatCurrency(deliveryFee)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-3 font-medium text-black">
+                                                <span>Total</span>
+                                                <span>{formatCurrency(order.total_amount)}</span>
+                                            </div>
                                         </div>
 
                                         <div className="mt-4 flex flex-wrap gap-2">
