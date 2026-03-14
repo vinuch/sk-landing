@@ -53,7 +53,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const reference = makeServerReference();
-        const totalAmount = amountKobo / 100;
+        const itemsTotal = amountKobo / 100;
+        const deliveryFee = body.deliveryFee ?? 0;
+        const grandTotal = itemsTotal + deliveryFee;
 
         // Create order directly for bank transfer (no checkout session needed)
         const orderPayload = {
@@ -61,11 +63,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             payment_method: "bank_transfer",
             payment_status: false, // Pending admin confirmation
             payment_reference: reference,
-            total_amount: totalAmount,
+            total_amount: grandTotal, // Grand total including delivery
             delivery_address: body.deliveryAddress?.trim() || null,
             delivery_instructions: body.deliveryInstructions?.trim() || null,
             vendor_instructions: body.vendorInstructions?.trim() || null,
-            delivery_fee: body.deliveryFee ?? null,
+            delivery_fee: deliveryFee,
             delivery_status: "preparing" as const,
             order_notes: {
                 items: trustedItems,
@@ -112,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             success: true,
             orderId,
             reference,
-            amount: totalAmount,
+            amount: grandTotal,
             currency: "NGN",
         });
     } catch (error: unknown) {

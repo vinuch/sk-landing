@@ -641,9 +641,20 @@ export default function VerifyOrdersPage() {
                                 <p><span className="text-gray-500">Method:</span> {order.payment_method || 'N/A'}</p>
                                 <p><span className="text-gray-500">Reference:</span> {order.payment_reference || 'N/A'}</p>
                                 <p><span className="text-gray-500">Status:</span> {order.payment_status ? '✅ Paid' : '⏳ Pending'}</p>
-                                {order.delivery_fee !== null && order.delivery_fee !== undefined && (
-                                    <p><span className="text-gray-500">Delivery Fee:</span> {formatCurrency(order.delivery_fee)}</p>
-                                )}
+                                
+                                {/* Price Breakdown */}
+                                <div className="border-t border-gray-200 my-2 pt-2">
+                                    {order.delivery_fee !== null && order.delivery_fee !== undefined && order.delivery_fee > 0 && (
+                                        <>
+                                            <p><span className="text-gray-500">Items Subtotal:</span> {formatCurrency((order.total_amount || 0) - order.delivery_fee)}</p>
+                                            <p><span className="text-gray-500">Delivery Fee:</span> {formatCurrency(order.delivery_fee)}</p>
+                                        </>
+                                    )}
+                                    <p className="font-medium text-black pt-1 border-t border-gray-200 mt-1">
+                                        <span className="text-gray-500">Grand Total:</span> {formatCurrency(order.total_amount)}
+                                    </p>
+                                </div>
+                                
                                 {order.paid_at && <p><span className="text-gray-500">Paid At:</span> {new Date(order.paid_at).toLocaleString()}</p>}
                                 {order.confirmed_at && <p><span className="text-gray-500">Confirmed At:</span> {new Date(order.confirmed_at).toLocaleString()}</p>}
                             </div>
