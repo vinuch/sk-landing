@@ -19,6 +19,8 @@ type OrderRow = {
     id: number;
     created_at: string;
     user_id?: string | null;
+    items_subtotal?: number | null;
+    delivery_fee?: number | null;
     total_amount?: number | null;
     payment_status?: boolean | null;
     payment_method?: string | null;
@@ -26,7 +28,6 @@ type OrderRow = {
     delivery_status?: DeliveryStatus | null;
     delivery_tracking?: DeliveryStatus | null;
     delivery_address?: string | null;
-    delivery_fee?: number | null;
     delivery_instructions?: string | null;
     vendor_instructions?: string | null;
     bank_receipt_url?: string | null;
@@ -538,11 +539,11 @@ export default function VerifyOrdersPage() {
                                 
                                 {/* Price Breakdown */}
                                 <div className="border-t border-gray-200 my-2 pt-2">
+                                    {order.items_subtotal !== null && order.items_subtotal !== undefined && (
+                                        <p><span className="text-gray-500">Items Subtotal:</span> {formatCurrency(order.items_subtotal)}</p>
+                                    )}
                                     {order.delivery_fee !== null && order.delivery_fee !== undefined && order.delivery_fee > 0 && (
-                                        <>
-                                            <p><span className="text-gray-500">Items Subtotal:</span> {formatCurrency((order.total_amount || 0) - order.delivery_fee)}</p>
-                                            <p><span className="text-gray-500">Delivery Fee:</span> {formatCurrency(order.delivery_fee)}</p>
-                                        </>
+                                        <p><span className="text-gray-500">Delivery Fee:</span> {formatCurrency(order.delivery_fee)}</p>
                                     )}
                                     <p className="font-medium text-black pt-1 border-t border-gray-200 mt-1">
                                         <span className="text-gray-500">Grand Total:</span> {formatCurrency(order.total_amount)}
