@@ -114,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             success: true,
             orderId,
             reference,
-            amount: totalAmount,
+            amount: grandTotal,
             currency: "NGN",
         });
     } catch (error: unknown) {
