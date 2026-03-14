@@ -23,6 +23,19 @@ type AutocompleteServiceLike = {
     ) => void;
 };
 
+type PlacesServiceStatusLike = {
+    OK: string;
+};
+
+type GoogleMapsLike = {
+    maps?: {
+        places?: {
+            AutocompleteService: new () => AutocompleteServiceLike;
+            PlacesServiceStatus: PlacesServiceStatusLike;
+        };
+    };
+};
+
 export default function AddressAutocomplete({
     value = "",
     disabled,
@@ -30,6 +43,8 @@ export default function AddressAutocomplete({
     onAddressSelect,
     onInputChange,
 }: AddressAutocompleteProps) {
+    const googleMaps =
+        typeof window !== "undefined" ? (window.google as GoogleMapsLike | undefined) : undefined;
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const serviceRef = useRef<AutocompleteServiceLike | null>(null);
     const [scriptReady, setScriptReady] = useState(false);
@@ -38,24 +53,24 @@ export default function AddressAutocomplete({
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    const canSearch = Boolean(scriptReady && window.google?.maps?.places && inputValue.trim().length >= 3);
+    const canSearch = Boolean(scriptReady && googleMaps?.maps?.places && inputValue.trim().length >= 3);
 
     useEffect(() => {
         setInputValue(value);
     }, [value]);
 
     useEffect(() => {
-        if (window.google?.maps?.places) {
+        if (googleMaps?.maps?.places) {
             setScriptReady(true);
         }
-    }, []);
+    }, [googleMaps]);
 
     useEffect(() => {
-        if (!scriptReady || !window.google?.maps?.places || serviceRef.current) {
+        if (!scriptReady || !googleMaps?.maps?.places || serviceRef.current) {
             return;
         }
-        serviceRef.current = new window.google.maps.places.AutocompleteService();
-    }, [scriptReady]);
+        serviceRef.current = new googleMaps.maps.places.AutocompleteService();
+    }, [googleMaps, scriptReady]);
 
     useEffect(() => {
         const closeOnOutsideClick = (event: MouseEvent) => {
@@ -83,7 +98,7 @@ export default function AddressAutocomplete({
                 },
                 (predictions: PlacePrediction[] | null, status: string) => {
                     setLoading(false);
-                    if (status !== window.google?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
+                    if (status !== googleMaps?.maps?.places?.PlacesServiceStatus.OK || !predictions) {
                         setSuggestions([]);
                         return;
                     }
@@ -94,7 +109,7 @@ export default function AddressAutocomplete({
         }, 200);
 
         return () => clearTimeout(handle);
-    }, [inputValue, canSearch]);
+    }, [googleMaps, inputValue, canSearch]);
 
     const helperText = useMemo(() => {
         if (!apiKey) return "Google Maps API key is missing";

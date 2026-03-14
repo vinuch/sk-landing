@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabaseClient';
-import { checkDeliveryRadius, type Coordinates } from '@/lib/distance';
+import { checkDeliveryRadius, STORE_COORDINATES, type Coordinates } from '@/lib/distance';
 
 // Store address for pickup
 const STORE_PICKUP_ADDRESS = 'F725+8X6, Satellite Town, Lagos, Nigeria';
@@ -169,13 +169,13 @@ export default function CartPage() {
 
     // Fetch delivery quote when address changes
     useEffect(() => {
-        if (defaultAddressLine && items.length > 0) {
+        if (defaultAddressLine && items.length > 0 && mapsReady) {
             fetchDeliveryQuote(defaultAddressLine);
-        } else {
+        } else if (!defaultAddressLine || items.length === 0) {
             setDeliveryQuote(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [defaultAddressLine]);
+    }, [defaultAddressLine, mapsReady, items.length]);
 
     const fetchBankAccount = async () => {
         try {
@@ -198,6 +198,14 @@ export default function CartPage() {
         setQuoteError(null);
 
         try {
+            const deliveryCoordinates = mapsReady ? await geocodeAddressInBrowser(address.trim()) : null;
+
+            if (!deliveryCoordinates) {
+                setQuoteError('Could not get map coordinates for this address yet');
+                setDeliveryQuote(null);
+                return;
+            }
+
             const cartItems = items.map(item => ({
                 name: item.name,
                 quantity: item.quantity,
@@ -210,6 +218,8 @@ export default function CartPage() {
                 body: JSON.stringify({
                     pickup_address: STORE_PICKUP_ADDRESS,
                     delivery_address: address.trim(),
+                    pickup_coordinates: STORE_COORDINATES,
+                    delivery_coordinates: deliveryCoordinates,
                     items: cartItems,
                 }),
             });
@@ -589,8 +599,8 @@ export default function CartPage() {
                     onLoad={() => setMapsReady(true)}
                 />
             ) : null}
-            <div className={`bg-primary min-h-screen bg-primary p-6 md:p-12 ${leagueSpartan.className}`}>
-                <div className="absolute bg-white/60 h-full w-screen top -mt-12 z-10 left-0"></div>
+            <div className={`relative overflow-x-hidden bg-primary min-h-screen p-6 md:p-12 ${leagueSpartan.className}`}>
+                <div className="absolute inset-0 z-10 bg-white/60"></div>
                 <div className="relative z-20">
                     <h2 className="text-black text-center text-4xl md:text-5xl mb-3">
                         Your cart
@@ -886,11 +896,6 @@ export default function CartPage() {
                                 {checkingDistance && (
                                     <p className="text-sm text-blue-600 mb-3">
                                         Checking delivery location...
-                                    </p>
-                                )}
-                                {distanceCheck && distanceCheck.isWithinRadius && (
-                                    <p className="text-sm text-green-600 mb-3">
-                                        ✅ {distanceCheck.distance} km from store — We deliver here!
                                     </p>
                                 )}
                                 {outsideDeliveryRadius && (

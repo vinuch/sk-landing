@@ -9,8 +9,8 @@ export interface Coordinates {
 // Satellite Kitchen store coordinates (Satellite Town, Lagos)
 // F725+8X6, Satellite Town, Lagos, Nigeria
 export const STORE_COORDINATES: Coordinates = {
-  lat: 6.455,  // Approximate latitude for Satellite Town
-  lng: 3.384,  // Approximate longitude for Satellite Town
+  lat: 6.450811091174003,
+  lng: 3.259897122764782,
 };
 
 // Earth's radius in kilometers

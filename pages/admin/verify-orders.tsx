@@ -2,8 +2,10 @@
 
 import Layout from '@/components/layout';
 import { leagueSpartan } from '../restaurant-menu';
+import Script from 'next/script';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { STORE_COORDINATES, type Coordinates } from '@/lib/distance';
 
 type DeliveryStatus = 
     | 'pending' 
@@ -61,6 +63,33 @@ type OrdersResponse = {
     orders?: OrderRow[];
     orderItems?: OrderItemRow[];
     profiles?: ProfileRow[];
+};
+
+type GeocoderStatusLike = {
+    OK: string;
+};
+
+type GeocoderResultLike = {
+    geometry: {
+        location: {
+            lat: () => number;
+            lng: () => number;
+        };
+    };
+};
+
+type GeocoderLike = {
+    geocode: (
+        request: { address: string; region?: string },
+        callback: (results: GeocoderResultLike[] | null, status: string) => void
+    ) => void;
+};
+
+type GoogleMapsLike = {
+    maps?: {
+        Geocoder: new () => GeocoderLike;
+        GeocoderStatus: GeocoderStatusLike;
+    };
 };
 
 const STATUS_FLOW: DeliveryStatus[] = [
@@ -132,7 +161,17 @@ function getStatusProgress(status: DeliveryStatus): number {
     return ((index + 1) / STATUS_FLOW.length) * 100;
 }
 
+function calculateSubtotalFromOrderItems(items: OrderItemRow[]) {
+    return items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
+}
+
+function calculateSubtotalFromNotes(items: Array<{ name: string; quantity: number; lineTotal?: number }>) {
+    return items.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+}
+
 export default function VerifyOrdersPage() {
+    const googleMaps =
+        typeof window !== 'undefined' ? (window.google as GoogleMapsLike | undefined) : undefined;
     const [adminKey, setAdminKey] = useState('');
     const [authed, setAuthed] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -145,14 +184,40 @@ export default function VerifyOrdersPage() {
     const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
     const [bookingOrderId, setBookingOrderId] = useState<number | null>(null);
     const [bookingLoading, setBookingLoading] = useState(false);
+    const [mapsReady, setMapsReady] = useState(false);
+    const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     useEffect(() => {
         const savedKey = sessionStorage.getItem('sk_admin_key');
         if (savedKey) {
             setAdminKey(savedKey);
             setAuthed(true);
+            fetchAllOrders(savedKey);
         }
     }, []);
+
+    const geocodeAddressInBrowser = async (address: string): Promise<Coordinates | null> => {
+        if (!googleMaps?.maps?.Geocoder) {
+            return null;
+        }
+
+        const geocoder = new googleMaps.maps.Geocoder();
+
+        return new Promise((resolve) => {
+            geocoder.geocode({ address, region: 'ng' }, (results, status) => {
+                if (status !== googleMaps?.maps?.GeocoderStatus.OK || !results?.length) {
+                    resolve(null);
+                    return;
+                }
+
+                const location = results[0].geometry.location;
+                resolve({
+                    lat: location.lat(),
+                    lng: location.lng(),
+                });
+            });
+        });
+    };
 
     const itemsByOrder = useMemo(() => {
         return orderItems.reduce<Record<number, OrderItemRow[]>>((acc, item) => {
@@ -249,7 +314,11 @@ export default function VerifyOrdersPage() {
         // Update the order in the list
         setOrders((prev) => prev.map((order) => 
             order.id === orderId 
-                ? { ...order, payment_status: action === 'confirm', delivery_tracking: action === 'confirm' ? 'confirmed' : 'pending' }
+                ? {
+                    ...order,
+                    payment_status: action === 'confirm',
+                    delivery_tracking: action === 'confirm' ? 'awaiting_confirmation' : 'pending',
+                  }
                 : order
         ));
         toast.success(json.message || `Order #${orderId} ${action}ed successfully`);
@@ -297,6 +366,10 @@ export default function VerifyOrdersPage() {
 
     const handleBookRider = async (order: OrderRow) => {
         if (!adminKey || !order.delivery_address) return;
+        if (!mapsReady) {
+            toast.error('Maps is still loading. Please try again in a moment.');
+            return;
+        }
         
         setBookingLoading(true);
         setBookingOrderId(order.id);
@@ -310,6 +383,14 @@ export default function VerifyOrdersPage() {
         // Get customer phone from profile
         const profile = order.user_id ? profilesById[order.user_id] : null;
         const customerPhone = profile?.phone || '0000000000';
+        const deliveryCoordinates = await geocodeAddressInBrowser(order.delivery_address);
+
+        if (!deliveryCoordinates) {
+            setBookingLoading(false);
+            setBookingOrderId(null);
+            toast.error('Could not get map coordinates for this delivery address');
+            return;
+        }
 
         const res = await fetch('/api/delivery/book', {
             method: 'POST',
@@ -321,6 +402,8 @@ export default function VerifyOrdersPage() {
                 order_id: order.id,
                 pickup_address: STORE_PICKUP_ADDRESS,
                 delivery_address: order.delivery_address,
+                pickup_coordinates: STORE_COORDINATES,
+                delivery_coordinates: deliveryCoordinates,
                 items: items,
                 customer_phone: customerPhone,
             }),
@@ -353,7 +436,7 @@ export default function VerifyOrdersPage() {
                     rider_name: json.rider_name || null,
                     rider_phone: json.rider_phone || null,
                     tracking_url: json.tracking_url || null,
-                    delivery_tracking: 'rider_arrived' as const,
+                    delivery_tracking: 'ready' as const,
                 }
                 : o
         ));
@@ -435,6 +518,11 @@ export default function VerifyOrdersPage() {
         const nextStatus = getNextStatus(currentStatus);
         const prevStatus = getPreviousStatus(currentStatus);
         const canBookRider = order.payment_status && !order.delivery_id && currentStatus !== 'rider_arrived' && currentStatus !== 'rider_left' && currentStatus !== 'delivered';
+        const subtotal = items.length > 0
+            ? calculateSubtotalFromOrderItems(items)
+            : calculateSubtotalFromNotes(noteItems);
+        const total = Number(order.total_amount || 0);
+        const deliveryFee = Math.max(0, total - subtotal);
 
         return (
             <div className={`border rounded-xl p-4 bg-white shadow-sm ${isBankTransferPending ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-200'}`}>
@@ -457,7 +545,7 @@ export default function VerifyOrdersPage() {
                 {/* Quick Info */}
                 <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
                     <div>
-                        <span className="text-gray-500">Amount:</span>
+                        <span className="text-gray-500">Total:</span>
                         <span className="font-medium text-black ml-1">{formatCurrency(order.total_amount)}</span>
                     </div>
                     <div>
@@ -527,6 +615,24 @@ export default function VerifyOrdersPage() {
                             ) : (
                                 <p className="text-sm text-gray-600">No item lines found.</p>
                             )}
+                        </div>
+
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-black mb-2">Amount Breakdown</p>
+                            <div className="space-y-1 text-sm text-gray-700">
+                                <div className="flex justify-between gap-3">
+                                    <span>Subtotal</span>
+                                    <span>{formatCurrency(subtotal)}</span>
+                                </div>
+                                <div className="flex justify-between gap-3">
+                                    <span>Delivery Fee</span>
+                                    <span>{formatCurrency(deliveryFee)}</span>
+                                </div>
+                                <div className="flex justify-between gap-3 font-medium text-black">
+                                    <span>Total</span>
+                                    <span>{formatCurrency(order.total_amount)}</span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Payment Info */}
@@ -706,6 +812,13 @@ export default function VerifyOrdersPage() {
 
     return (
         <Layout>
+            {googleMapsApiKey ? (
+                <Script
+                    src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`}
+                    strategy="afterInteractive"
+                    onLoad={() => setMapsReady(true)}
+                />
+            ) : null}
             <div className={`bg-primary min-h-screen ${leagueSpartan.className}`}>
                 <div className="min-h-screen bg-white/60 p-4 md:p-6 lg:p-12">
                     <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md p-4 md:p-6 lg:p-10">
