@@ -11,6 +11,7 @@ type InitiateCheckoutBody = {
     deliveryAddress?: string;
     deliveryInstructions?: string;
     vendorInstructions?: string;
+    deliveryFee?: number;
     items?: unknown;
 };
 
@@ -56,6 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: "Invalid checkout amount" });
         }
 
+        const rawDeliveryFee = Number(body.deliveryFee ?? 0);
+        const deliveryFee = Number.isFinite(rawDeliveryFee) && rawDeliveryFee > 0 ? rawDeliveryFee : 0;
+        const itemsSubtotal = amountKobo / 100;
+        const totalAmountKobo = Math.round((itemsSubtotal + deliveryFee) * 100);
+
         const reference = makeServerReference();
         const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
 
@@ -63,11 +69,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: userId,
             reference,
             status: "pending",
-            amount_kobo: amountKobo,
+            amount_kobo: totalAmountKobo,
             currency: "NGN",
             payment_method: body.paymentMethod || "pay_online",
             delivery_address: body.deliveryAddress?.trim() || null,
+            delivery_fee: deliveryFee,
             delivery_instructions: body.deliveryInstructions?.trim() || null,
+            items_subtotal: itemsSubtotal,
             vendor_instructions: body.vendorInstructions?.trim() || null,
             cart_snapshot: trustedItems,
             expires_at: expiresAt,

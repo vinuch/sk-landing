@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: orders, error: ordersError } = await supabaseAdmin
             .from("Orders")
             .select(
-                "id, created_at, user_id, total_amount, payment_status, payment_method, payment_reference, delivery_status, delivery_address, delivery_instructions, vendor_instructions, bank_receipt_url, paid_at, order_notes"
+                "id, created_at, user_id, items_subtotal, delivery_fee, total_amount, payment_status, payment_method, payment_reference, delivery_status, delivery_address, delivery_instructions, vendor_instructions, bank_receipt_url, paid_at, order_notes"
             )
             .not("bank_receipt_url", "is", null)
             .or("payment_status.is.null,payment_status.eq.false")

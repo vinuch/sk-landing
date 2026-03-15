@@ -19,6 +19,8 @@ type OrderRow = {
     id: number;
     created_at: string;
     user_id?: string | null;
+    items_subtotal?: number | null;
+    delivery_fee?: number | null;
     total_amount?: number | null;
     payment_status?: boolean | null;
     payment_method?: string | null;
@@ -91,6 +93,15 @@ function formatCurrency(value?: number | null) {
 
 function calculateSubtotal(items: OrderItemRow[]) {
     return items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
+}
+
+function resolvePriceBreakdown(order: OrderRow, items: OrderItemRow[]) {
+    const fallbackSubtotal = calculateSubtotal(items);
+    const subtotal = Number(order.items_subtotal ?? fallbackSubtotal);
+    const total = Number(order.total_amount || 0);
+    const deliveryFee = Number(order.delivery_fee ?? Math.max(0, total - subtotal));
+
+    return { subtotal, deliveryFee };
 }
 
 export default function AdminOrdersPage() {
@@ -264,9 +275,7 @@ export default function AdminOrdersPage() {
                                 const profile = order.user_id ? profilesById[order.user_id] : null;
                                 const orderStatus = (order.delivery_tracking || order.delivery_status || 'pending') as DeliveryStatus;
                                 const items = itemsByOrder[order.id] || [];
-                                const subtotal = calculateSubtotal(items);
-                                const total = Number(order.total_amount || 0);
-                                const deliveryFee = Math.max(0, total - subtotal);
+                                const { subtotal, deliveryFee } = resolvePriceBreakdown(order, items);
 
                                 return (
                                     <div key={order.id} className="border rounded-xl p-4 md:p-5 bg-gray-50">

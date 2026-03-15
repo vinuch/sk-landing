@@ -122,6 +122,7 @@ export type Database = {
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking?: string | null
           id?: number
+          items_subtotal?: number | null
           order_notes?: Json | null
           paid_at?: string | null
           payment_method?: string | null
@@ -146,6 +147,7 @@ export type Database = {
           delivery_status?: Database["public"]["Enums"]["Delivery_status"] | null
           delivery_tracking?: string | null
           id?: number
+          items_subtotal?: number | null
           order_notes?: Json | null
           paid_at?: string | null
           payment_method?: string | null
@@ -227,9 +229,11 @@ export type Database = {
           created_at: string
           currency: string | null
           delivery_address: string | null
+          delivery_fee: number | null
           delivery_instructions: string | null
           expires_at: string | null
           id: number
+          items_subtotal: number | null
           order_id: number | null
           paid_at: string | null
           payment_method: string | null
@@ -245,9 +249,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           delivery_address?: string | null
+          delivery_fee?: number | null
           delivery_instructions?: string | null
           expires_at?: string | null
           id?: number
+          items_subtotal?: number | null
           order_id?: number | null
           paid_at?: string | null
           payment_method?: string | null
@@ -263,9 +269,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           delivery_address?: string | null
+          delivery_fee?: number | null
           delivery_instructions?: string | null
           expires_at?: string | null
           id?: number
+          items_subtotal?: number | null
           order_id?: number | null
           paid_at?: string | null
           payment_method?: string | null

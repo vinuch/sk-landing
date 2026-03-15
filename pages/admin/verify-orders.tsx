@@ -169,6 +169,21 @@ function calculateSubtotalFromNotes(items: Array<{ name: string; quantity: numbe
     return items.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
 }
 
+function resolvePriceBreakdown(
+    order: OrderRow,
+    items: OrderItemRow[],
+    noteItems: Array<{ name: string; quantity: number; lineTotal?: number }>
+) {
+    const fallbackSubtotal = items.length > 0
+        ? calculateSubtotalFromOrderItems(items)
+        : calculateSubtotalFromNotes(noteItems);
+    const subtotal = Number(order.items_subtotal ?? fallbackSubtotal);
+    const total = Number(order.total_amount || 0);
+    const deliveryFee = Number(order.delivery_fee ?? Math.max(0, total - subtotal));
+
+    return { subtotal, deliveryFee };
+}
+
 export default function VerifyOrdersPage() {
     const googleMaps =
         typeof window !== 'undefined' ? (window.google as GoogleMapsLike | undefined) : undefined;
@@ -518,11 +533,7 @@ export default function VerifyOrdersPage() {
         const nextStatus = getNextStatus(currentStatus);
         const prevStatus = getPreviousStatus(currentStatus);
         const canBookRider = order.payment_status && !order.delivery_id && currentStatus !== 'rider_arrived' && currentStatus !== 'rider_left' && currentStatus !== 'delivered';
-        const subtotal = items.length > 0
-            ? calculateSubtotalFromOrderItems(items)
-            : calculateSubtotalFromNotes(noteItems);
-        const total = Number(order.total_amount || 0);
-        const deliveryFee = Math.max(0, total - subtotal);
+        const { subtotal, deliveryFee } = resolvePriceBreakdown(order, items, noteItems);
 
         return (
             <div className={`border rounded-xl p-4 bg-white shadow-sm ${isBankTransferPending ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-200'}`}>

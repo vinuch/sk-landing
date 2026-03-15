@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const checkoutSessionResponse = await supabaseAdmin
             .from("checkout_sessions")
-            .select("id, user_id, status, amount_kobo, currency, payment_method, delivery_address, delivery_instructions, vendor_instructions, cart_snapshot, order_id, expires_at")
+            .select("id, user_id, status, amount_kobo, currency, payment_method, delivery_address, delivery_fee, delivery_instructions, items_subtotal, vendor_instructions, cart_snapshot, order_id, expires_at")
             .eq("reference", reference)
             .maybeSingle();
 
@@ -172,11 +172,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(500).json({ error: "Checkout cart snapshot is empty" });
         }
 
+        const fallbackItemsSubtotal = safeItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+        const itemsSubtotal = Number(checkoutSession.items_subtotal ?? fallbackItemsSubtotal);
+        const deliveryFee = Number(checkoutSession.delivery_fee ?? Math.max(0, expectedAmountKobo / 100 - itemsSubtotal));
         const totalAmount = expectedAmountKobo / 100;
         const baseOrderPayload: TablesInsert<"Orders"> = {
             payment_method: checkoutSession.payment_method || "pay_online",
             payment_status: true,
+            delivery_fee: deliveryFee,
             total_amount: totalAmount,
+            items_subtotal: itemsSubtotal,
             delivery_status: "preparing",
         };
 

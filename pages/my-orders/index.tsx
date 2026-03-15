@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabaseClient';
 type OrderRow = {
     id: number;
     created_at: string;
+    items_subtotal?: number | null;
+    delivery_fee?: number | null;
     payment_method: string | null;
     payment_status: boolean | null;
     total_amount: number | null;
@@ -47,6 +49,15 @@ function calculateSubtotal(items: OrderItemRow[]) {
     return items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
 }
 
+function resolvePriceBreakdown(order: OrderRow, items: OrderItemRow[]) {
+    const fallbackSubtotal = calculateSubtotal(items);
+    const subtotal = Number(order.items_subtotal ?? fallbackSubtotal);
+    const total = Number(order.total_amount || 0);
+    const deliveryFee = Number(order.delivery_fee ?? Math.max(0, total - subtotal));
+
+    return { subtotal, deliveryFee };
+}
+
 export default function MyOrdersPage() {
     const { user, loading: authLoading } = useAuth();
     const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -68,7 +79,7 @@ export default function MyOrdersPage() {
 
             const { data, error } = await supabase
                 .from('Orders')
-                .select('id, created_at, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, delivery_tracking, bank_receipt_url, paid_at')
+                .select('id, created_at, items_subtotal, delivery_fee, payment_method, payment_status, total_amount, payment_reference, delivery_address, delivery_status, delivery_tracking, bank_receipt_url, paid_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -198,9 +209,7 @@ export default function MyOrdersPage() {
                             <div className="space-y-4">
                                 {orders.map((order) => {
                                     const orderItems = orderItemsByOrderId[order.id] || [];
-                                    const subtotal = calculateSubtotal(orderItems);
-                                    const total = Number(order.total_amount || 0);
-                                    const deliveryFee = Math.max(0, total - subtotal);
+                                    const { subtotal, deliveryFee } = resolvePriceBreakdown(order, orderItems);
 
                                     return (
                                     <div key={order.id} className="border rounded-xl p-4 md:p-5 bg-gray-50">

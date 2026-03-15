@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const ordersResponse = await supabaseAdmin
             .from("Orders")
             .select(
-                "id, created_at, user_id, total_amount, payment_status, payment_method, payment_reference, delivery_status, delivery_tracking, delivery_address, delivery_instructions, vendor_instructions"
+                "id, created_at, user_id, items_subtotal, delivery_fee, total_amount, payment_status, payment_method, payment_reference, delivery_status, delivery_tracking, delivery_address, delivery_instructions, vendor_instructions"
             )
             .order("created_at", { ascending: false })
             .limit(200);
