@@ -531,8 +531,16 @@ export default function CartPage() {
                         vendorInstructions,
                         deliveryFee: deliveryQuote?.available ? deliveryQuote.delivery_fee : 0,
                         items: items.map((item) => ({
-                            id: item.productRef || item.id,
+                            id: item.id,
+                            productRef: item.productRef || item.id,
+                            name: item.name,
                             quantity: item.quantity,
+                            unitPrice: item.subTotal,
+                            subTotal: item.subTotal,
+                            lineTotal: item.subTotal * item.quantity,
+                            selections: item.selections,
+                            selectionSummary: formatSelectionsDescription(item.selections),
+                            categoryName: item.category_name,
                         })),
                     }),
                 });

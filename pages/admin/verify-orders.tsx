@@ -3,7 +3,7 @@
 import Layout from '@/components/layout';
 import { leagueSpartan } from '../restaurant-menu';
 import Script from 'next/script';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { STORE_COORDINATES, type Coordinates } from '@/lib/distance';
 
@@ -202,15 +202,6 @@ export default function VerifyOrdersPage() {
     const [mapsReady, setMapsReady] = useState(false);
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-    useEffect(() => {
-        const savedKey = sessionStorage.getItem('sk_admin_key');
-        if (savedKey) {
-            setAdminKey(savedKey);
-            setAuthed(true);
-            fetchAllOrders(savedKey);
-        }
-    }, []);
-
     const geocodeAddressInBrowser = async (address: string): Promise<Coordinates | null> => {
         if (!googleMaps?.maps?.Geocoder) {
             return null;
@@ -264,7 +255,7 @@ export default function VerifyOrdersPage() {
         return orders.filter(order => getOrderStatus(order) === activeTab);
     }, [orders, activeTab]);
 
-    const fetchAllOrders = async (keyOverride?: string) => {
+    const fetchAllOrders = useCallback(async (keyOverride?: string) => {
         const key = keyOverride || adminKey;
         if (!key) return;
 
@@ -290,7 +281,16 @@ export default function VerifyOrdersPage() {
         setOrderItems(json.orderItems || []);
         setProfiles(json.profiles || []);
         return true;
-    };
+    }, [adminKey]);
+
+    useEffect(() => {
+        const savedKey = sessionStorage.getItem('sk_admin_key');
+        if (savedKey) {
+            setAdminKey(savedKey);
+            setAuthed(true);
+            fetchAllOrders(savedKey);
+        }
+    }, [fetchAllOrders]);
 
     const handleAdminLogin = async () => {
         const ok = await fetchAllOrders(adminKey);
@@ -467,7 +467,7 @@ export default function VerifyOrdersPage() {
             if (!item || typeof item !== 'object') return { name: 'Unknown', quantity: 1 };
             const i = item as Record<string, unknown>;
             return {
-                name: String(i.name || 'Unknown'),
+                name: String(i.displayName || i.name || 'Unknown'),
                 quantity: Number(i.quantity || 1),
                 lineTotal: i.lineTotal !== undefined ? Number(i.lineTotal) : undefined,
             };

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import type { TablesInsert } from "@/types_db";
+import type { Json, TablesInsert } from "@/types_db";
 
 type VerifyAndCreateBody = {
     reference?: string;
@@ -24,9 +24,13 @@ type OrderInsertResult = {
 type SnapshotItem = {
     id: string;
     name: string;
+    displayName?: string;
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    selectionSummary?: string;
+    selections?: Json;
+    categoryName?: string;
 };
 
 function isSnapshotItem(value: unknown): value is SnapshotItem {
@@ -164,9 +168,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        const safeItems = Array.isArray(checkoutSession.cart_snapshot)
-            ? checkoutSession.cart_snapshot.filter(isSnapshotItem)
+        const snapshotItems = Array.isArray(checkoutSession.cart_snapshot)
+            ? (checkoutSession.cart_snapshot as unknown[])
             : [];
+        const safeItems: SnapshotItem[] = snapshotItems.filter(isSnapshotItem);
 
         if (safeItems.length === 0) {
             return res.status(500).json({ error: "Checkout cart snapshot is empty" });
@@ -249,7 +254,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (orderId && safeItems.length > 0) {
             const orderItemsPayload = safeItems.map((item) => ({
                 order_id: orderId,
-                item_name: item.name,
+                item_name: item.displayName || item.name,
                 quantity: item.quantity || 1,
                 unit_price: Number(item.unitPrice || 0),
                 line_total: Number(item.lineTotal || 0),

@@ -47,14 +47,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { trustedItems, amountKobo } = await buildTrustedCheckout(requestedItems);
-        if (amountKobo <= 0) {
+        const { trustedItems, subtotalNaira } = await buildTrustedCheckout(requestedItems);
+        if (subtotalNaira <= 0) {
             return res.status(400).json({ error: "Invalid checkout amount" });
         }
 
         const reference = makeServerReference();
-        const itemsSubtotal = amountKobo / 100;
-        const deliveryFee = body.deliveryFee ?? 0;
+        const itemsSubtotal = subtotalNaira;
+        const rawDeliveryFee = Number(body.deliveryFee ?? 0);
+        const deliveryFee = Number.isFinite(rawDeliveryFee) && rawDeliveryFee > 0 ? rawDeliveryFee : 0;
         const grandTotal = itemsSubtotal + deliveryFee;
 
         // Create order directly for bank transfer (no checkout session needed)
@@ -94,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (trustedItems.length > 0) {
             const orderItemsPayload = trustedItems.map((item) => ({
                 order_id: orderId,
-                item_name: item.name,
+                item_name: item.displayName || item.name,
                 quantity: item.quantity || 1,
                 unit_price: Number(item.unitPrice || 0),
                 line_total: Number(item.lineTotal || 0),

@@ -52,14 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { trustedItems, amountKobo } = await buildTrustedCheckout(requestedItems);
-        if (amountKobo <= 0) {
+        const { trustedItems, subtotalNaira } = await buildTrustedCheckout(requestedItems);
+        if (subtotalNaira <= 0) {
             return res.status(400).json({ error: "Invalid checkout amount" });
         }
 
         const rawDeliveryFee = Number(body.deliveryFee ?? 0);
         const deliveryFee = Number.isFinite(rawDeliveryFee) && rawDeliveryFee > 0 ? rawDeliveryFee : 0;
-        const itemsSubtotal = amountKobo / 100;
+        const itemsSubtotal = subtotalNaira;
         const totalAmountKobo = Math.round((itemsSubtotal + deliveryFee) * 100);
 
         const reference = makeServerReference();

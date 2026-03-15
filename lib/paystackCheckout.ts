@@ -1,16 +1,29 @@
 import crypto from "crypto";
+import type { Json } from "@/types_db";
 
 export type RequestedCheckoutItem = {
     id: string;
     quantity: number;
+    name?: string;
+    unitPrice?: number;
+    subTotal?: number;
+    lineTotal?: number;
+    selections?: Json;
+    selectionSummary?: string;
+    categoryName?: string;
 };
 
 export type TrustedCheckoutItem = {
     id: string;
     name: string;
+    displayName: string;
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    baseUnitPrice: number;
+    selections?: Json;
+    selectionSummary?: string;
+    categoryName?: string;
 };
 
 export const DELIVERY_FEE_NAIRA = 1000;
@@ -63,29 +76,84 @@ function normalizeProductId(rawId: unknown) {
     return leadingDigits?.[1] || "";
 }
 
+function sanitizeOptionalString(value: unknown) {
+    if (typeof value !== "string") return undefined;
+
+    const trimmed = value.trim();
+    return trimmed || undefined;
+}
+
+function sanitizeOptionalNumber(value: unknown) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : undefined;
+}
+
+function sanitizeOptionalJson(value: unknown): Json | undefined {
+    if (value === null) return null;
+
+    if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+    ) {
+        return value;
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map(sanitizeOptionalJson)
+            .filter((entry): entry is Json => entry !== undefined);
+    }
+
+    if (!value || typeof value !== "object") {
+        return undefined;
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>)
+        .map(([key, entryValue]) => [key, sanitizeOptionalJson(entryValue)] as const)
+        .filter(([, entryValue]) => entryValue !== undefined);
+
+    return Object.fromEntries(entries);
+}
+
+function buildDisplayName(name: string, selectionSummary?: string) {
+    const trimmedSummary = sanitizeOptionalString(selectionSummary);
+    return trimmedSummary && trimmedSummary !== "No selections" ? `${name} - ${trimmedSummary}` : name;
+}
+
 export function sanitizeRequestedItems(items: unknown): RequestedCheckoutItem[] {
     if (!Array.isArray(items)) return [];
 
-    const deduped = new Map<string, number>();
+    const sanitizedItems: RequestedCheckoutItem[] = [];
 
     for (const raw of items) {
         if (!raw || typeof raw !== "object") continue;
 
         const record = raw as Record<string, unknown>;
         const id = normalizeProductId(record.productRef ?? record.id);
-        const quantity = Number((raw as Record<string, unknown>).quantity ?? 0);
+        const quantity = Number(record.quantity ?? 0);
 
         if (!id) continue;
         if (!Number.isFinite(quantity) || quantity <= 0) continue;
 
         const safeQty = Math.min(Math.floor(quantity), 50);
-        deduped.set(id, (deduped.get(id) || 0) + safeQty);
+        const trustedUnitPrice = sanitizeOptionalNumber(record.unitPrice ?? record.subTotal);
+        const trustedLineTotal = sanitizeOptionalNumber(record.lineTotal);
+
+        sanitizedItems.push({
+            id,
+            quantity: safeQty,
+            name: sanitizeOptionalString(record.name),
+            unitPrice: trustedUnitPrice,
+            subTotal: trustedUnitPrice,
+            lineTotal: trustedLineTotal,
+            selections: sanitizeOptionalJson(record.selections),
+            selectionSummary: sanitizeOptionalString(record.selectionSummary),
+            categoryName: sanitizeOptionalString(record.categoryName ?? record.category_name),
+        });
     }
 
-    return Array.from(deduped.entries()).map(([id, quantity]) => ({
-        id,
-        quantity: Math.min(quantity, 50),
-    }));
+    return sanitizedItems;
 }
 
 type OdooProductRow = {
@@ -134,10 +202,11 @@ export async function buildTrustedCheckout(items: RequestedCheckoutItem[]) {
         };
     }
 
-    const numericIds = items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id) && id > 0);
-    if (numericIds.length !== items.length) {
+    const parsedIds = items.map((item) => Number(item.id));
+    if (parsedIds.some((id) => !Number.isInteger(id) || id <= 0)) {
         throw new Error("Invalid item id(s)");
     }
+    const numericIds = Array.from(new Set(parsedIds));
 
     const products = await fetchOdooProductsByIds(numericIds);
     const productsById = new Map<number, OdooProductRow>(products.map((product) => [product.id, product]));
@@ -149,16 +218,25 @@ export async function buildTrustedCheckout(items: RequestedCheckoutItem[]) {
             throw new Error(`Unknown product id: ${item.id}`);
         }
 
-        const unitPrice = Number(product.list_price || 0);
+        const baseUnitPrice = Number(product.list_price || 0);
         const quantity = Math.max(1, Math.min(50, Math.floor(item.quantity)));
-        const lineTotal = unitPrice * quantity;
+        const requestedUnitPrice = sanitizeOptionalNumber(item.unitPrice ?? item.subTotal);
+        const requestedLineTotal = sanitizeOptionalNumber(item.lineTotal);
+        const unitPrice = requestedUnitPrice ?? (requestedLineTotal !== undefined ? requestedLineTotal / quantity : baseUnitPrice);
+        const lineTotal = requestedLineTotal ?? unitPrice * quantity;
+        const name = sanitizeOptionalString(item.name) || product.name;
 
         return {
             id: String(product.id),
-            name: product.name,
+            name,
+            displayName: buildDisplayName(name, item.selectionSummary),
             quantity,
             unitPrice,
             lineTotal,
+            baseUnitPrice,
+            selections: item.selections,
+            selectionSummary: item.selectionSummary,
+            categoryName: item.categoryName,
         };
     });
 

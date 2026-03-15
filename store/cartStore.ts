@@ -20,21 +20,35 @@ type CartState = {
     clearCart: () => void;
 };
 
+function buildCartItemId(item: CartItem) {
+    const baseId = String(item.productRef || item.id);
+    return JSON.stringify({
+        baseId,
+        subTotal: item.subTotal,
+        selections: item.selections,
+    });
+}
+
 export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
             items: [],
 
             addItem: (item) => {
-                const existing = get().items.find((i) => i.id === item.id);
+                const normalizedItem: CartItem = {
+                    ...item,
+                    id: buildCartItemId(item),
+                    productRef: String(item.productRef || item.id),
+                };
+                const existing = get().items.find((i) => i.id === normalizedItem.id);
                 if (existing) {
                     set({
                         items: get().items.map((i) =>
-                            i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+                            i.id === normalizedItem.id ? { ...i, quantity: i.quantity + normalizedItem.quantity } : i
                         ),
                     });
                 } else {
-                    set({ items: [...get().items, item] });
+                    set({ items: [...get().items, normalizedItem] });
                 }
             },
 
@@ -55,6 +69,6 @@ export const useCartStore = create<CartState>()(
 export const useCartTotals = () => {
     const items = useCartStore((state) => state.items);
     const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
-    const totalPrice = items.reduce((acc, item) => acc + item.list_price * item.quantity, 0);
+    const totalPrice = items.reduce((acc, item) => acc + item.subTotal * item.quantity, 0);
     return { totalItems, totalPrice };
 };
