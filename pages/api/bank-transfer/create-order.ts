@@ -112,6 +112,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
+        // Send webhook to chef bot
+        try {
+            const chefBotWebhook = process.env.CHEF_BOT_WEBHOOK_URL;
+            console.log('Bank transfer - Chef bot webhook URL:', chefBotWebhook);
+            if (chefBotWebhook) {
+                // Fetch user profile for name/phone
+                const { data: userProfile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('full_name, phone')
+                    .eq('id', userId)
+                    .maybeSingle();
+                
+                console.log('Bank transfer - Sending webhook for order:', orderId);
+                const webhookResponse = await fetch(`${chefBotWebhook}/website`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: orderId,
+                        customerName: userProfile?.full_name || 'Unknown',
+                        customerPhone: userProfile?.phone || 'N/A',
+                        deliveryAddress: body.deliveryAddress || 'Pickup',
+                        items: trustedItems.map(item => ({
+                            name: item.name,
+                            quantity: item.quantity || 1,
+                            price: Number(item.unitPrice || 0)
+                        })),
+                        deliveryFee: deliveryFee,
+                        total: grandTotal,
+                        source: 'Website (Bank Transfer)'
+                    })
+                });
+                console.log('Bank transfer - Webhook response status:', webhookResponse.status);
+            } else {
+                console.log('Bank transfer - No chef bot webhook URL configured');
+            }
+        } catch (webhookErr) {
+            console.error('Bank transfer - Chef bot webhook failed:', webhookErr);
+            // Don't fail the order if webhook fails
+        }
+
         return res.status(200).json({
             success: true,
             orderId,
