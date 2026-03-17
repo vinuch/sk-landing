@@ -274,6 +274,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq("id", checkoutSession.id)
             .eq("status", "pending");
 
+        // Send webhook to chef bot
+        try {
+            const chefBotWebhook = process.env.CHEF_BOT_WEBHOOK_URL;
+            if (chefBotWebhook && insertedOrder) {
+                // Fetch user profile for name/phone
+                const { data: userProfile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('full_name, phone')
+                    .eq('id', resolvedUserId)
+                    .maybeSingle();
+                
+                await fetch(`${chefBotWebhook}/website`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: orderId,
+                        customerName: userProfile?.full_name || 'Unknown',
+                        customerPhone: userProfile?.phone || 'N/A',
+                        deliveryAddress: checkoutSession.delivery_address || 'Pickup',
+                        items: safeItems.map(item => ({
+                            name: item.name,
+                            quantity: item.quantity || 1,
+                            price: Number(item.unitPrice || 0)
+                        })),
+                        deliveryFee: 0,
+                        total: checkoutSession.amount_kobo ? checkoutSession.amount_kobo / 100 : 0,
+                        source: 'Website'
+                    })
+                });
+            }
+        } catch (webhookErr) {
+            console.error('Chef bot webhook failed:', webhookErr);
+            // Don't fail the order if webhook fails
+        }
+
         return res.status(200).json({
             success: true,
             orderId,
