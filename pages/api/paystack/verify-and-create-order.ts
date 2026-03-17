@@ -277,6 +277,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Send webhook to chef bot
         try {
             const chefBotWebhook = process.env.CHEF_BOT_WEBHOOK_URL;
+            console.log('Chef bot webhook URL:', chefBotWebhook);
             if (chefBotWebhook && insertedOrder) {
                 // Fetch user profile for name/phone
                 const { data: userProfile } = await supabaseAdmin
@@ -285,7 +286,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq('id', resolvedUserId)
                     .maybeSingle();
                 
-                await fetch(`${chefBotWebhook}/website`, {
+                console.log('Sending webhook to chef bot for order:', orderId);
+                const webhookResponse = await fetch(`${chefBotWebhook}/website`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -303,6 +305,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         source: 'Website'
                     })
                 });
+                console.log('Webhook response status:', webhookResponse.status);
+            } else {
+                console.log('Skipping webhook - no URL or order:', { chefBotWebhook: !!chefBotWebhook, insertedOrder: !!insertedOrder });
             }
         } catch (webhookErr) {
             console.error('Chef bot webhook failed:', webhookErr);
