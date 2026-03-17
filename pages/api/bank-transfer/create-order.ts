@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .maybeSingle();
                 
                 console.log('Bank transfer - Sending webhook for order:', orderId);
-                const webhookResponse = await fetch(`${chefBotWebhook}/website`, {
+                const webhookResponse = await fetch(`${chefBotWebhook}/webhook/website`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
